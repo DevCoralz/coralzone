@@ -7,7 +7,7 @@
 ```
 
 The Express backend that used to live in `/backend` and deploy to its own
-host has been folded into `frontend/api` — see `frontend/README.md` for the
+host has been folded into the frontend app (`src/routes/api/$.ts` + `server/handlers`) — see `frontend/README.md` for the
 endpoints and env vars. There's no `VITE_API_URL` anymore: the frontend
 calls `/api/...` on its own origin.
 
