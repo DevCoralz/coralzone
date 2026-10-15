@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Eye, Users } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { apiFetch } from "@/lib/api";
 
 type Counts = { online: number; visitors: number; users: number };
 
@@ -18,13 +18,15 @@ export function SiteActivity() {
     } catch { /* Restricted storage: count this browsing session only. */ }
     async function heartbeat() {
       if (document.visibilityState === "hidden") return;
-      try {
-        const { data, error } = await supabase.rpc("touch_site_visitor", { p_visitor_id: visitorId });
-        if (!active) return;
-        if (error || !data?.[0]) { setAvailable(false); return; }
-        setCounts(data[0]);
-        setAvailable(true);
-      } catch { if (active) setAvailable(false); }
+      const data = await apiFetch<Counts>("/api/activity", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ visitorId }),
+      });
+      if (!active) return;
+      if (!data) { setAvailable(false); return; }
+      setCounts(data);
+      setAvailable(true);
     }
     void heartbeat();
     const timer = window.setInterval(() => void heartbeat(), 30000);

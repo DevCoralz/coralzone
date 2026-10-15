@@ -30,6 +30,40 @@ app.get("/api/announcements", (_req, res) => {
   ]);
 });
 
+// Site activity heartbeat, backing SiteActivity.tsx. In-memory only — swap
+// for a shared store (Redis/Postgres) once this runs on more than one
+// instance, since counts won't be consistent across processes otherwise.
+const ONLINE_WINDOW_MS = 90_000;
+const SWEEP_INTERVAL_MS = 60_000;
+const lastSeenByVisitor = new Map(); // visitorId -> epoch ms
+let totalUsers = 0; // no account system wired up yet — placeholder until auth lands
+
+const VISITOR_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+app.post("/api/activity", (req, res) => {
+  const visitorId = req.body?.visitorId;
+  if (typeof visitorId !== "string" || !VISITOR_ID_RE.test(visitorId)) {
+    return res.status(400).json({ error: "Invalid visitorId" });
+  }
+  const now = Date.now();
+  lastSeenByVisitor.set(visitorId, now);
+
+  let online = 0;
+  for (const lastSeen of lastSeenByVisitor.values()) {
+    if (now - lastSeen <= ONLINE_WINDOW_MS) online++;
+  }
+
+  res.json({ online, visitors: lastSeenByVisitor.size, users: totalUsers });
+});
+
+// Drop stale visitors so the map doesn't grow unbounded over a long-running process.
+setInterval(() => {
+  const cutoff = Date.now() - ONLINE_WINDOW_MS;
+  for (const [visitorId, lastSeen] of lastSeenByVisitor) {
+    if (lastSeen < cutoff) lastSeenByVisitor.delete(visitorId);
+  }
+}, SWEEP_INTERVAL_MS).unref();
+
 // 404 for unknown API routes.
 app.use("/api", (_req, res) => {
   res.status(404).json({ error: "Not found" });

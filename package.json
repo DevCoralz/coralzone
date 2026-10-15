@@ -14,9 +14,6 @@
     "test": "cd frontend && bun run test",
     "lint": "cd frontend && bun run lint"
   },
-  "dependencies": {
-    "@supabase/supabase-js": "^2.117.3"
-  },
   "devDependencies": {
     "drizzle-kit": "0.x",
     "drizzle-orm": "0.x",
