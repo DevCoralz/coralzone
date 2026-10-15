@@ -1,0 +1,20 @@
+{
+  "name": "coralzone-monorepo",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "cd frontend && bun run dev",
+    "build": "cd frontend && bun run build",
+    "test": "cd frontend && bun run test",
+    "lint": "cd frontend && bun run lint",
+    "db:migrate": "cd frontend && bun run db:migrate"
+  },
+  "devDependencies": {
+    "drizzle-kit": "0.x",
+    "drizzle-orm": "0.x",
+    "postgres": "^3.4.9"
+  }
+}

@@ -197,6 +197,37 @@
   &:focus { border-color: var(--primary-glow); }
 }
 
+/* Flat, square-cornered surfaces for auth — same transparency language as
+   the dashboard (dashboard-surface / dashboard-backdrop) instead of the
+   rounder, lighter glass-card/glass-input used elsewhere. The Google
+   button is deliberately excluded and keeps the pill (glass-chip) shape. */
+@utility auth-card {
+  background: var(--dashboard-surface, var(--glass));
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  backdrop-filter: blur(22px) saturate(160%);
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.35), 0 30px 60px -20px oklch(0.1 0.1 262 / 0.6);
+}
+
+@utility auth-input {
+  /* Sized to match the py-3 / text-sm "Continue with Google" button
+     exactly, so every field in the form reads as one consistent height. */
+  width: 100%;
+  padding: 0.75rem 1.1rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  border-radius: 8px;
+  background: var(--dashboard-shine, oklch(1 0 0 / 0.1));
+  border: 1px solid var(--glass-border);
+  color: var(--foreground);
+  outline: none;
+  backdrop-filter: blur(12px);
+  transition: border-color 150ms, background 150ms;
+  &::placeholder { color: var(--muted-foreground); }
+  &:focus { border-color: var(--primary-glow); background: oklch(1 0 0 / 0.08); }
+  &[aria-invalid="true"] { border-color: var(--destructive); }
+}
+
 @utility pill-3d {
   align-items: center;
   justify-content: center;
