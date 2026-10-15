@@ -1,0 +1,18 @@
+<!-- LOVABLE:BEGIN -->
+> [!IMPORTANT]
+> This project is connected to [Lovable](https://lovable.dev). Avoid rewriting
+> published git history — force pushing, or rebasing/amending/squashing commits
+> that are already pushed — as it rewrites history on Lovable's side and the
+> user will likely lose their project history.
+>
+> Commits you push to the connected branch sync back to Lovable and show up in
+> the editor, so keep the branch in a working state.
+<!-- LOVABLE:END -->
+
+- Keep homepage activity and announcement UI in focused components, so the approved homepage layout remains separate from updates.
+- Use a restricted aggregate-only database heartbeat for visitor statistics; never expose visitor identifiers or account records to public readers.
+- Store only an anonymous browser identifier locally to deduplicate visits; durable totals live in Cloud and online status expires after missed heartbeats.
+- Derive canonical and social image URLs from the request origin using the shared brand metadata server function, so metadata follows the active domain without a hardcoded future domain.
+- Keep the public dashboard preview in focused shell, chart and overview components; sample account data is client-only and must be replaced by authenticated owner-scoped reads before connecting real balances.
+- Give each dashboard navigation destination its own top-level preview route and unique metadata; keep payment and unfinished product actions explicitly unavailable until connected.
+- Keep staff administration in a separate `/admin` route family with focused pages and client-only sample records until a separate backend is connected; this preserves the public/customer experience and prevents preview actions from implying persisted account changes.

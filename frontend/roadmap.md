@@ -1,0 +1,11 @@
+# Roadmap
+- [x] Rename CoralzOne and reduce heading weights while preserving the approved design.
+- [x] Add live online, visitor and registered-user counts.
+- [x] Add right-to-left looping movie announcements and verify the homepage and auth page.
+- [x] Create crystal-blue logo for favicon and social/search identity only.
+- [x] Replace template page branding and verify icons and sharing metadata.
+- [ ] Remove the platform-injected publishing badge — blocked: requires editor access on Pro or higher.
+- [x] Build dashboard balance, interactive usage charts, summary and top announcements.
+- [x] Add five-tab floating navigation and separate hamburger-menu pages.
+- [x] Verify dashboard interactions and mobile layout.
+- [x] Build a frontend-only admin workspace with overview, user management and user detail, payments, site settings, ads, and admin management; keep all data demo-only.
