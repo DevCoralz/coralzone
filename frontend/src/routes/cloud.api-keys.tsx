@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react';
-import { KeyRound, Copy, Trash2, Plus, Check } from 'lucide-react';
+import { KeyRound, Copy, Trash2, Plus, Check, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { dashboardHead } from '@/lib/dashboard-head';
 import { getBrandMetadata } from '@/lib/brand.functions';
@@ -89,7 +89,7 @@ function Page() {
                 <p className="mt-1 font-mono text-xs text-muted-foreground">{revealed === entry.id ? entry.key : masked(entry.key)} · {entry.created}</p>
               </div>
               <div className="ml-auto flex shrink-0 gap-2">
-                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" aria-label={revealed === entry.id ? 'Hide key' : 'Reveal key'} onClick={() => setRevealed(revealed === entry.id ? null : entry.id)}>{revealed === entry.id ? '••' : '👁'}</Button>
+                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" aria-label={revealed === entry.id ? 'Hide key' : 'Reveal key'} onClick={() => setRevealed(revealed === entry.id ? null : entry.id)}>{revealed === entry.id ? <EyeOff size={15} /> : <Eye size={15} />}</Button>
                 <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" aria-label="Copy key" onClick={() => copy(entry.key)}>{copied === entry.key ? <Check size={15} className="text-online" /> : <Copy size={15} />}</Button>
                 <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg text-destructive" aria-label={`Delete ${entry.label}`} onClick={() => revoke(entry.id)}><Trash2 size={15} /></Button>
               </div>

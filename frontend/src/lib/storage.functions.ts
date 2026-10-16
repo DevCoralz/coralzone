@@ -105,6 +105,7 @@ export interface StorageUsage {
   bytesUsed: number;
   bytesQuota: number;
   requests: number;
+  daily: Array<{ date: string; requests: number }>;
 }
 
 export const getStorageUsage = createServerFn({ method: "GET" }).handler(async (): Promise<StorageUsage> => {
@@ -113,7 +114,11 @@ export const getStorageUsage = createServerFn({ method: "GET" }).handler(async (
   const bytesUsed = Number(data.bytesUsed ?? 0);
   const bytesQuota = Number(data.bytesQuota ?? 0);
   const requests = Number(data.requests ?? 0);
-  return { configured: result.configured && result.ok, bytesUsed, bytesQuota, requests };
+  const rawDaily = [data.daily, data.history, data.series, data.days].find(Array.isArray) as Array<Record<string, unknown>> | undefined;
+  const daily = (rawDaily ?? [])
+    .map(row => ({ date: String(row.date ?? row.day ?? row.label ?? "").slice(0, 10), requests: Number(row.requests ?? row.count ?? row.total ?? 0) }))
+    .filter(row => row.date);
+  return { configured: result.configured && result.ok, bytesUsed, bytesQuota, requests, daily };
 });
 
 export const deleteStorageFile = createServerFn({ method: "POST" })
@@ -159,9 +164,15 @@ export const uploadStorageFile = createServerFn({ method: "POST" })
       method: "POST",
       body: form,
     });
-    const body = (result.data && typeof result.data === "object" ? result.data : {}) as Record<string, unknown>;
-    const nested = (body.file && typeof body.file === "object" ? body.file : {}) as Record<string, unknown>;
-    const id = String(body.id ?? body.key ?? body.media_id ?? nested.id ?? nested.key ?? "");
+    let id = "";
+    try {
+      const asRecord = (value: unknown): Record<string, unknown> => (value && typeof value === "object" ? (value as Record<string, unknown>) : {});
+      const body = asRecord(result.data);
+      const nested = asRecord(body.file);
+      id = String(body.id ?? body.key ?? body.media_id ?? nested.id ?? nested.key ?? "");
+    } catch {
+      id = "";
+    }
     return { configured: result.configured, ok: result.ok, id };
   });
 

@@ -99,13 +99,19 @@ function Page() {
     setUploading(true);
     const saved = { ...names };
     for (const file of picked) {
+      let dataBase64 = '';
       try {
-        const dataBase64 = await new Promise<string>((resolve, reject) => {
+        dataBase64 = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '');
           reader.onerror = () => reject(new Error('read failed'));
           reader.readAsDataURL(file);
         });
+      } catch {
+        toast('error', `Could not read ${file.name}`);
+        continue;
+      }
+      try {
         const result = await uploadStorageFile({ data: { name: file.name, contentType: file.type || 'application/octet-stream', dataBase64 } });
         if (result.ok) {
           if (result.id) saved[result.id] = file.name;
@@ -114,7 +120,7 @@ function Page() {
           toast('error', result.configured ? `Could not upload ${file.name}` : 'Storage is offline');
         }
       } catch {
-        toast('error', `Could not read ${file.name}`);
+        toast('error', `Upload failed for ${file.name}`);
       }
     }
     setNames(saved);

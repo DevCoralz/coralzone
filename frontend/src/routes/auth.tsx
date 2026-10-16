@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 import bg from "@/assets/crystal-bg.jpg";
 import { Button } from "@/components/ui/button";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
@@ -330,11 +330,15 @@ function Field({
   autoComplete?: string;
   error?: string;
 }) {
+  const [shown, setShown] = useState(false);
+  const isPassword = type === "password";
   return (
     <div>
+      <div className="relative">
       <input
         className="auth-input"
-        type={type}
+        style={isPassword ? { paddingRight: "3rem" } : undefined}
+        type={isPassword && shown ? "text" : type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
@@ -342,6 +346,17 @@ function Field({
         aria-invalid={Boolean(error)}
         aria-label={placeholder}
       />
+      {isPassword && (
+        <button
+          type="button"
+          onClick={() => setShown((v) => !v)}
+          aria-label={shown ? "Hide password" : "Show password"}
+          className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+        >
+          {shown ? <EyeOff size={18} /> : <Eye size={18} />}
+        </button>
+      )}
+      </div>
       {error && <p className="mt-1 px-1 text-xs text-destructive">{error}</p>}
     </div>
   );
