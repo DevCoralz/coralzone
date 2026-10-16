@@ -13,18 +13,26 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as ApisRouteImport } from './routes/apis'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as CloudRouteImport } from './routes/cloud'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as DropsRouteImport } from './routes/drops'
-import { Route as MoviesRouteImport } from './routes/movies'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as WalletRouteImport } from './routes/wallet'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminAdsRouteImport } from './routes/admin.ads'
+import { Route as AdminCloudRouteImport } from './routes/admin.cloud'
 import { Route as AdminPaymentsRouteImport } from './routes/admin.payments'
 import { Route as AdminSiteSettingsRouteImport } from './routes/admin.site-settings'
 import { Route as AdminTeamRouteImport } from './routes/admin.team'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as CloudIndexRouteImport } from './routes/cloud.index'
+import { Route as CloudApiKeysRouteImport } from './routes/cloud.api-keys'
+import { Route as CloudDocsRouteImport } from './routes/cloud.docs'
+import { Route as CloudPayRouteImport } from './routes/cloud.pay'
+import { Route as CloudPricingRouteImport } from './routes/cloud.pricing'
+import { Route as CloudStorageRouteImport } from './routes/cloud.storage'
+import { Route as CloudUsageRouteImport } from './routes/cloud.usage'
 import { Route as AdminUserUserIdRouteImport } from './routes/admin.user.$userId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -47,6 +55,11 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CloudRoute = CloudRouteImport.update({
+  id: '/cloud',
+  path: '/cloud',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -55,11 +68,6 @@ const DashboardRoute = DashboardRouteImport.update({
 const DropsRoute = DropsRouteImport.update({
   id: '/drops',
   path: '/drops',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MoviesRoute = MoviesRouteImport.update({
-  id: '/movies',
-  path: '/movies',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -87,6 +95,11 @@ const AdminAdsRoute = AdminAdsRouteImport.update({
   path: '/admin/ads',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminCloudRoute = AdminCloudRouteImport.update({
+  id: '/admin/cloud',
+  path: '/admin/cloud',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminPaymentsRoute = AdminPaymentsRouteImport.update({
   id: '/admin/payments',
   path: '/admin/payments',
@@ -107,6 +120,41 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   path: '/admin/users',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CloudIndexRoute = CloudIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => CloudRoute,
+} as any)
+const CloudApiKeysRoute = CloudApiKeysRouteImport.update({
+  id: '/api-keys',
+  path: '/api-keys',
+  getParentRoute: () => CloudRoute,
+} as any)
+const CloudDocsRoute = CloudDocsRouteImport.update({
+  id: '/docs',
+  path: '/docs',
+  getParentRoute: () => CloudRoute,
+} as any)
+const CloudPayRoute = CloudPayRouteImport.update({
+  id: '/pay',
+  path: '/pay',
+  getParentRoute: () => CloudRoute,
+} as any)
+const CloudPricingRoute = CloudPricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
+  getParentRoute: () => CloudRoute,
+} as any)
+const CloudStorageRoute = CloudStorageRouteImport.update({
+  id: '/storage',
+  path: '/storage',
+  getParentRoute: () => CloudRoute,
+} as any)
+const CloudUsageRoute = CloudUsageRouteImport.update({
+  id: '/usage',
+  path: '/usage',
+  getParentRoute: () => CloudRoute,
+} as any)
 const AdminUserUserIdRoute = AdminUserUserIdRouteImport.update({
   id: '/admin/user/$userId',
   path: '/admin/user/$userId',
@@ -118,18 +166,26 @@ export interface FileRoutesByFullPath {
   '/account': typeof AccountRoute
   '/apis': typeof ApisRoute
   '/auth': typeof AuthRoute
+  '/cloud': typeof CloudRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/drops': typeof DropsRoute
-  '/movies': typeof MoviesRoute
   '/settings': typeof SettingsRoute
   '/support': typeof SupportRoute
   '/wallet': typeof WalletRoute
   '/admin/ads': typeof AdminAdsRoute
+  '/admin/cloud': typeof AdminCloudRoute
   '/admin/payments': typeof AdminPaymentsRoute
   '/admin/site-settings': typeof AdminSiteSettingsRoute
   '/admin/team': typeof AdminTeamRoute
   '/admin/users': typeof AdminUsersRoute
+  '/cloud/api-keys': typeof CloudApiKeysRoute
+  '/cloud/docs': typeof CloudDocsRoute
+  '/cloud/pay': typeof CloudPayRoute
+  '/cloud/pricing': typeof CloudPricingRoute
+  '/cloud/storage': typeof CloudStorageRoute
+  '/cloud/usage': typeof CloudUsageRoute
   '/admin/': typeof AdminIndexRoute
+  '/cloud/': typeof CloudIndexRoute
   '/admin/user/$userId': typeof AdminUserUserIdRoute
 }
 export interface FileRoutesByTo {
@@ -139,16 +195,23 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
   '/drops': typeof DropsRoute
-  '/movies': typeof MoviesRoute
   '/settings': typeof SettingsRoute
   '/support': typeof SupportRoute
   '/wallet': typeof WalletRoute
   '/admin/ads': typeof AdminAdsRoute
+  '/admin/cloud': typeof AdminCloudRoute
   '/admin/payments': typeof AdminPaymentsRoute
   '/admin/site-settings': typeof AdminSiteSettingsRoute
   '/admin/team': typeof AdminTeamRoute
   '/admin/users': typeof AdminUsersRoute
+  '/cloud/api-keys': typeof CloudApiKeysRoute
+  '/cloud/docs': typeof CloudDocsRoute
+  '/cloud/pay': typeof CloudPayRoute
+  '/cloud/pricing': typeof CloudPricingRoute
+  '/cloud/storage': typeof CloudStorageRoute
+  '/cloud/usage': typeof CloudUsageRoute
   '/admin': typeof AdminIndexRoute
+  '/cloud': typeof CloudIndexRoute
   '/admin/user/$userId': typeof AdminUserUserIdRoute
 }
 export interface FileRoutesById {
@@ -157,18 +220,26 @@ export interface FileRoutesById {
   '/account': typeof AccountRoute
   '/apis': typeof ApisRoute
   '/auth': typeof AuthRoute
+  '/cloud': typeof CloudRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/drops': typeof DropsRoute
-  '/movies': typeof MoviesRoute
   '/settings': typeof SettingsRoute
   '/support': typeof SupportRoute
   '/wallet': typeof WalletRoute
   '/admin/ads': typeof AdminAdsRoute
+  '/admin/cloud': typeof AdminCloudRoute
   '/admin/payments': typeof AdminPaymentsRoute
   '/admin/site-settings': typeof AdminSiteSettingsRoute
   '/admin/team': typeof AdminTeamRoute
   '/admin/users': typeof AdminUsersRoute
+  '/cloud/api-keys': typeof CloudApiKeysRoute
+  '/cloud/docs': typeof CloudDocsRoute
+  '/cloud/pay': typeof CloudPayRoute
+  '/cloud/pricing': typeof CloudPricingRoute
+  '/cloud/storage': typeof CloudStorageRoute
+  '/cloud/usage': typeof CloudUsageRoute
   '/admin/': typeof AdminIndexRoute
+  '/cloud/': typeof CloudIndexRoute
   '/admin/user/$userId': typeof AdminUserUserIdRoute
 }
 export interface FileRouteTypes {
@@ -178,18 +249,26 @@ export interface FileRouteTypes {
     | '/account'
     | '/apis'
     | '/auth'
+    | '/cloud'
     | '/dashboard'
     | '/drops'
-    | '/movies'
     | '/settings'
     | '/support'
     | '/wallet'
     | '/admin/ads'
+    | '/admin/cloud'
     | '/admin/payments'
     | '/admin/site-settings'
     | '/admin/team'
     | '/admin/users'
+    | '/cloud/api-keys'
+    | '/cloud/docs'
+    | '/cloud/pay'
+    | '/cloud/pricing'
+    | '/cloud/storage'
+    | '/cloud/usage'
     | '/admin/'
+    | '/cloud/'
     | '/admin/user/$userId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -199,16 +278,23 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/drops'
-    | '/movies'
     | '/settings'
     | '/support'
     | '/wallet'
     | '/admin/ads'
+    | '/admin/cloud'
     | '/admin/payments'
     | '/admin/site-settings'
     | '/admin/team'
     | '/admin/users'
+    | '/cloud/api-keys'
+    | '/cloud/docs'
+    | '/cloud/pay'
+    | '/cloud/pricing'
+    | '/cloud/storage'
+    | '/cloud/usage'
     | '/admin'
+    | '/cloud'
     | '/admin/user/$userId'
   id:
     | '__root__'
@@ -216,18 +302,26 @@ export interface FileRouteTypes {
     | '/account'
     | '/apis'
     | '/auth'
+    | '/cloud'
     | '/dashboard'
     | '/drops'
-    | '/movies'
     | '/settings'
     | '/support'
     | '/wallet'
     | '/admin/ads'
+    | '/admin/cloud'
     | '/admin/payments'
     | '/admin/site-settings'
     | '/admin/team'
     | '/admin/users'
+    | '/cloud/api-keys'
+    | '/cloud/docs'
+    | '/cloud/pay'
+    | '/cloud/pricing'
+    | '/cloud/storage'
+    | '/cloud/usage'
     | '/admin/'
+    | '/cloud/'
     | '/admin/user/$userId'
   fileRoutesById: FileRoutesById
 }
@@ -236,13 +330,14 @@ export interface RootRouteChildren {
   AccountRoute: typeof AccountRoute
   ApisRoute: typeof ApisRoute
   AuthRoute: typeof AuthRoute
+  CloudRoute: typeof CloudRouteWithChildren
   DashboardRoute: typeof DashboardRoute
   DropsRoute: typeof DropsRoute
-  MoviesRoute: typeof MoviesRoute
   SettingsRoute: typeof SettingsRoute
   SupportRoute: typeof SupportRoute
   WalletRoute: typeof WalletRoute
   AdminAdsRoute: typeof AdminAdsRoute
+  AdminCloudRoute: typeof AdminCloudRoute
   AdminPaymentsRoute: typeof AdminPaymentsRoute
   AdminSiteSettingsRoute: typeof AdminSiteSettingsRoute
   AdminTeamRoute: typeof AdminTeamRoute
@@ -281,6 +376,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cloud': {
+      id: '/cloud'
+      path: '/cloud'
+      fullPath: '/cloud'
+      preLoaderRoute: typeof CloudRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
@@ -293,13 +395,6 @@ declare module '@tanstack/react-router' {
       path: '/drops'
       fullPath: '/drops'
       preLoaderRoute: typeof DropsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/movies': {
-      id: '/movies'
-      path: '/movies'
-      fullPath: '/movies'
-      preLoaderRoute: typeof MoviesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -337,6 +432,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAdsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/cloud': {
+      id: '/admin/cloud'
+      path: '/admin/cloud'
+      fullPath: '/admin/cloud'
+      preLoaderRoute: typeof AdminCloudRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/payments': {
       id: '/admin/payments'
       path: '/admin/payments'
@@ -365,6 +467,55 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cloud/': {
+      id: '/cloud/'
+      path: '/'
+      fullPath: '/cloud/'
+      preLoaderRoute: typeof CloudIndexRouteImport
+      parentRoute: typeof CloudRoute
+    }
+    '/cloud/api-keys': {
+      id: '/cloud/api-keys'
+      path: '/api-keys'
+      fullPath: '/cloud/api-keys'
+      preLoaderRoute: typeof CloudApiKeysRouteImport
+      parentRoute: typeof CloudRoute
+    }
+    '/cloud/docs': {
+      id: '/cloud/docs'
+      path: '/docs'
+      fullPath: '/cloud/docs'
+      preLoaderRoute: typeof CloudDocsRouteImport
+      parentRoute: typeof CloudRoute
+    }
+    '/cloud/pay': {
+      id: '/cloud/pay'
+      path: '/pay'
+      fullPath: '/cloud/pay'
+      preLoaderRoute: typeof CloudPayRouteImport
+      parentRoute: typeof CloudRoute
+    }
+    '/cloud/pricing': {
+      id: '/cloud/pricing'
+      path: '/pricing'
+      fullPath: '/cloud/pricing'
+      preLoaderRoute: typeof CloudPricingRouteImport
+      parentRoute: typeof CloudRoute
+    }
+    '/cloud/storage': {
+      id: '/cloud/storage'
+      path: '/storage'
+      fullPath: '/cloud/storage'
+      preLoaderRoute: typeof CloudStorageRouteImport
+      parentRoute: typeof CloudRoute
+    }
+    '/cloud/usage': {
+      id: '/cloud/usage'
+      path: '/usage'
+      fullPath: '/cloud/usage'
+      preLoaderRoute: typeof CloudUsageRouteImport
+      parentRoute: typeof CloudRoute
+    }
     '/admin/user/$userId': {
       id: '/admin/user/$userId'
       path: '/admin/user/$userId'
@@ -375,18 +526,41 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface CloudRouteChildren {
+  CloudApiKeysRoute: typeof CloudApiKeysRoute
+  CloudDocsRoute: typeof CloudDocsRoute
+  CloudPayRoute: typeof CloudPayRoute
+  CloudPricingRoute: typeof CloudPricingRoute
+  CloudStorageRoute: typeof CloudStorageRoute
+  CloudUsageRoute: typeof CloudUsageRoute
+  CloudIndexRoute: typeof CloudIndexRoute
+}
+
+const CloudRouteChildren: CloudRouteChildren = {
+  CloudApiKeysRoute: CloudApiKeysRoute,
+  CloudDocsRoute: CloudDocsRoute,
+  CloudPayRoute: CloudPayRoute,
+  CloudPricingRoute: CloudPricingRoute,
+  CloudStorageRoute: CloudStorageRoute,
+  CloudUsageRoute: CloudUsageRoute,
+  CloudIndexRoute: CloudIndexRoute,
+}
+
+const CloudRouteWithChildren = CloudRoute._addFileChildren(CloudRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRoute,
   ApisRoute: ApisRoute,
   AuthRoute: AuthRoute,
+  CloudRoute: CloudRouteWithChildren,
   DashboardRoute: DashboardRoute,
   DropsRoute: DropsRoute,
-  MoviesRoute: MoviesRoute,
   SettingsRoute: SettingsRoute,
   SupportRoute: SupportRoute,
   WalletRoute: WalletRoute,
   AdminAdsRoute: AdminAdsRoute,
+  AdminCloudRoute: AdminCloudRoute,
   AdminPaymentsRoute: AdminPaymentsRoute,
   AdminSiteSettingsRoute: AdminSiteSettingsRoute,
   AdminTeamRoute: AdminTeamRoute,

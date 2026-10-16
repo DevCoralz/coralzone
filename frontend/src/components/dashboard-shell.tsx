@@ -1,14 +1,14 @@
 import { Link, useNavigate, useRouter } from '@tanstack/react-router';
 import { useState, type ReactNode } from 'react';
-import { Home, Tv, Code2, Droplets, Wallet, Menu, UserRound, Settings2, LifeBuoy, ArrowUpRight, LogOut } from 'lucide-react';
+import { Home, Cloud, Code2, Droplets, Wallet, Menu, UserRound, Settings2, LifeBuoy, ArrowUpRight, LogOut } from 'lucide-react';
 import bg from '@/assets/crystal-bg.jpg';
 import { Button } from '@/components/ui/button';
-import { MovieAnnouncements } from '@/components/movie-announcements';
+import { CloudAnnouncements } from '@/components/cloud-announcements';
 import { Sheet, SheetContent, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
 import { logoutRequest } from '@/lib/auth-client';
 
 const tabs = [
-  { to: '/dashboard', label: 'Home', icon: Home }, { to: '/movies', label: 'Movies', icon: Tv },
+  { to: '/dashboard', label: 'Home', icon: Home }, { to: '/cloud', label: 'Cloud', icon: Cloud },
   { to: '/apis', label: 'APIs', icon: Code2 }, { to: '/drops', label: 'Drops', icon: Droplets },
   { to: '/wallet', label: 'Wallet', icon: Wallet },
 ] as const;
@@ -34,7 +34,7 @@ export function DashboardShell({ children, userName }: { children: ReactNode; us
   return <div className="dashboard-shell relative isolate min-h-screen overflow-x-clip">
     <img src={bg} alt="" className="fixed inset-0 -z-20 h-full w-full object-cover" />
     <div className="dashboard-backdrop fixed inset-0 -z-10" />
-    <MovieAnnouncements />
+    <CloudAnnouncements />
     <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-6 sm:px-8">
       <Link to="/" className="font-display text-2xl font-normal">CoralzOne<span className="text-primary-glow">.</span></Link>
       <div className="flex items-center gap-3">
@@ -62,7 +62,7 @@ export function DashboardShell({ children, userName }: { children: ReactNode; us
     </header>
     <main className="mx-auto max-w-6xl px-5 pb-36 pt-4 sm:px-8 sm:pt-6">{children}</main>
     <nav className="dashboard-nav fixed bottom-5 left-1/2 z-40 grid w-[calc(100%-32px)] max-w-lg -translate-x-1/2 grid-cols-5 gap-1 p-2" aria-label="Main navigation">
-      {tabs.map(tab => <Button asChild variant="ghost" key={tab.to} className="dashboard-nav-link h-14 flex-col gap-1 rounded-full px-1 text-[10px] font-normal sm:text-xs"><Link to={tab.to} activeOptions={{ exact: true }} activeProps={{ className: 'dashboard-nav-active' }}><tab.icon className="h-5 w-5" />{tab.label}</Link></Button>)}
+      {tabs.map(tab => <Button asChild variant="ghost" key={tab.to} className="dashboard-nav-link h-14 flex-col gap-1 rounded-lg px-1 text-[10px] font-normal sm:text-xs"><Link to={tab.to} activeOptions={{ exact: true }} activeProps={{ className: 'dashboard-nav-active' }}><tab.icon className="h-5 w-5" />{tab.label}</Link></Button>)}
     </nav>
   </div>;
 }

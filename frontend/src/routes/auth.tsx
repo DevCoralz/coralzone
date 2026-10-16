@@ -16,7 +16,7 @@ import {
 } from "@/lib/auth-client";
 
 export const Route = createFileRoute("/auth")({
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown>): { next?: string; error?: string } => ({
     next: typeof search.next === "string" ? search.next : "/dashboard",
     error: typeof search.error === "string" ? search.error : undefined,
   }),

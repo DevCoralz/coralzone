@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import { useState, type ReactNode } from 'react';
-import { LayoutDashboard, Users, CreditCard, Settings2, Megaphone, ShieldCheck, Menu, ArrowLeft } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, Cloud, Settings2, Megaphone, ShieldCheck, Menu, ArrowLeft } from 'lucide-react';
 import bg from '@/assets/crystal-bg.jpg';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
@@ -9,6 +9,7 @@ const nav = [
   { to: '/admin', label: 'Overview', icon: LayoutDashboard },
   { to: '/admin/users', label: 'Users', icon: Users },
   { to: '/admin/payments', label: 'Payments', icon: CreditCard },
+  { to: '/admin/cloud', label: 'Cloud storage', icon: Cloud },
   { to: '/admin/site-settings', label: 'Site settings', icon: Settings2 },
   { to: '/admin/ads', label: 'Ads', icon: Megaphone },
   { to: '/admin/team', label: 'Admin team', icon: ShieldCheck },

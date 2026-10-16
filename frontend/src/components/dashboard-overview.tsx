@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
-import { ArrowUpRight, Plus, Eye, EyeOff, Code2, Tv, Droplets, ArrowDownLeft, ChevronRight, Wallet } from 'lucide-react';
+import { ArrowUpRight, Plus, Eye, EyeOff, Code2, Cloud, Droplets, ArrowDownLeft, ChevronRight, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DashboardChart } from '@/components/dashboard-chart';
 import { transactions } from '@/lib/dashboard-data';
@@ -20,7 +20,7 @@ export function DashboardOverview() {
       <div className="flex gap-3"><Button asChild variant="crystal" className="h-11 px-6 font-normal"><Link to="/wallet"><Plus />Top up</Link></Button><Button asChild variant="glass" className="h-11 px-5 font-normal"><Link to="/wallet">Transactions<ArrowUpRight /></Link></Button></div>
     </section>
     <div className="mt-6 grid grid-cols-3 gap-3 sm:gap-5">
-      {[{ icon: Code2, label: 'API requests', value: '3,240', sub: 'This month', to: '/apis' }, { icon: Tv, label: 'Movies', value: '0', sub: 'Coming soon', to: '/movies' }, { icon: Droplets, label: 'Active drops', value: '0', sub: 'Coming soon', to: '/drops' }].map(item => <Link key={item.label} to={item.to as '/apis' | '/movies' | '/drops'} className="dashboard-panel dashboard-stat block p-3 sm:p-5"><div className="flex items-center justify-between"><item.icon size={18} className="text-primary-glow" /><ArrowUpRight size={14} className="text-muted-foreground" /></div><p className="mt-4 text-[10px] text-muted-foreground sm:text-xs">{item.label}</p><p className="mt-1 text-2xl font-normal sm:text-3xl">{item.value}</p><p className="mt-2 text-[9px] text-muted-foreground sm:text-xs">{item.sub}</p></Link>)}
+      {[{ icon: Code2, label: 'API requests', value: '3,240', sub: 'This month', to: '/apis' }, { icon: Cloud, label: 'Cloud storage', value: '0 GB', sub: 'Free plan', to: '/cloud' }, { icon: Droplets, label: 'Active drops', value: '0', sub: 'Coming soon', to: '/drops' }].map(item => <Link key={item.label} to={item.to as '/apis' | '/cloud' | '/drops'} className="dashboard-panel dashboard-stat block p-3 sm:p-5"><div className="flex items-center justify-between"><item.icon size={18} className="text-primary-glow" /><ArrowUpRight size={14} className="text-muted-foreground" /></div><p className="mt-4 text-[10px] text-muted-foreground sm:text-xs">{item.label}</p><p className="mt-1 text-2xl font-normal sm:text-3xl">{item.value}</p><p className="mt-2 text-[9px] text-muted-foreground sm:text-xs">{item.sub}</p></Link>)}
     </div>
     <div className="mt-6 grid items-start gap-6 lg:grid-cols-[1.65fr_1fr]">
       <DashboardChart />

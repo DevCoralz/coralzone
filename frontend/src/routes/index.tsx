@@ -2,17 +2,17 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import bg from "@/assets/crystal-bg.jpg";
 import { Button } from "@/components/ui/button";
 import { SiteActivity } from "@/components/site-activity";
-import { MovieAnnouncements } from "@/components/movie-announcements";
+import { CloudAnnouncements } from "@/components/cloud-announcements";
 import { getBrandMetadata } from "@/lib/brand.functions";
 
 export const Route = createFileRoute("/")({
   loader: () => getBrandMetadata(),
   head: ({ loaderData }) => ({
     meta: [
-      { title: "CoralzOne — Movies, APIs, Numbers & More" },
-      { name: "description", content: "One ecosystem: stream movies, use REST APIs, buy foreign numbers, and more." },
+      { title: "CoralzOne — Cloud, APIs, Numbers & More" },
+      { name: "description", content: "One ecosystem: cloud storage, REST APIs, foreign numbers, and more." },
       { property: "og:title", content: "CoralzOne — One ecosystem for everything" },
-      { property: "og:description", content: "Stream movies, use REST APIs, buy foreign numbers, and more." },
+      { property: "og:description", content: "Cloud storage, REST APIs, foreign numbers, and more." },
       { property: "og:type", content: "website" },
       { property: "og:site_name", content: "CoralzOne" },
       { property: "og:url", content: `${loaderData?.origin ?? ""}/` },
@@ -22,9 +22,9 @@ export const Route = createFileRoute("/")({
       ] : []),
       { property: "og:image:width", content: "1200" },
       { property: "og:image:height", content: "630" },
-      { property: "og:image:alt", content: "CoralzOne royal-blue crystal logo — Movies, REST APIs and Foreign Numbers" },
+      { property: "og:image:alt", content: "CoralzOne royal-blue crystal logo — Cloud, REST APIs and Foreign Numbers" },
       { name: "twitter:title", content: "CoralzOne — One ecosystem" },
-      { name: "twitter:description", content: "Movies, REST APIs, foreign numbers and more in one crystal-clear place." },
+      { name: "twitter:description", content: "Cloud storage, REST APIs, foreign numbers and more in one crystal-clear place." },
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [{ rel: "canonical", href: `${loaderData?.origin ?? ""}/` }],
@@ -35,7 +35,7 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-const features = ["Movies", "REST APIs", "Foreign Numbers", "More soon"];
+const features = ["Cloud", "REST APIs", "Foreign Numbers", "More soon"];
 
 function Index() {
   return (
@@ -53,7 +53,7 @@ function Index() {
           <p className="mb-4 text-xs uppercase text-muted-foreground">One ecosystem</p>
           <h1 className="font-display text-4xl font-normal text-foreground text-glow sm:text-6xl">CoralzOne</h1>
           <p className="mx-auto mt-5 max-w-md text-base text-muted-foreground">
-            Watch movies, plug into REST APIs, grab foreign numbers — all in one crystal-clear place. More tools landing as we grow.
+            Store files in the Cloud, plug into REST APIs, grab foreign numbers — all in one crystal-clear place. More tools landing as we grow.
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-2">
             {features.map((f) => (
@@ -66,7 +66,7 @@ function Index() {
         </div>
       </main>
 
-      <MovieAnnouncements />
+      <CloudAnnouncements />
       <footer className="py-5 text-center text-xs text-muted-foreground">
         © {new Date().getFullYear()} · Powered by <span className="font-semibold text-foreground">Coralz</span>
       </footer>

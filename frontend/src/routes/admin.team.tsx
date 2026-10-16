@@ -1,8 +1,13 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, notFound } from '@tanstack/react-router';
+import { getIsAdmin } from '@/lib/admin.functions';
 import { AdminShell } from '@/components/admin-shell';
 import { AdminTeam } from '@/components/admin-team';
 
 export const Route = createFileRoute('/admin/team')({
+  beforeLoad: async () => {
+    const isAdmin = await getIsAdmin();
+    if (!isAdmin) throw notFound();
+  },
   head: () => ({
     meta: [
       { title: 'Admin team — CoralzOne Admin' },
