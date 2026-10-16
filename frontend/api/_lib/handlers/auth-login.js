@@ -26,11 +26,12 @@ export default async function handler(req, res) {
   const { email, password } = parsed.data;
 
   // Limit by IP *and* by email so one attacker can't hammer a single
-  // account from many IPs, and one IP can't spray many accounts.
-  const [ipLimit, emailLimit] = await Promise.all([
-    checkRateLimit(`login:ip:${ip}`, { max: 20, windowSeconds: 900 }),
-    checkRateLimit(`login:email:${email}`, { max: 8, windowSeconds: 900 }),
-  ]);
+  // account from many IPs, and one IP can't spray many accounts. Checked
+  // one after another, not in parallel — two concurrent writes to this
+  // table from the same request were the other half of what caused the
+  // rate-limiter's deadlocks (see rate-limit.js).
+  const ipLimit = await checkRateLimit(`login:ip:${ip}`, { max: 20, windowSeconds: 900 });
+  const emailLimit = await checkRateLimit(`login:email:${email}`, { max: 8, windowSeconds: 900 });
   if (!ipLimit.allowed || !emailLimit.allowed) {
     const retryAfterSeconds = Math.max(ipLimit.retryAfterSeconds, emailLimit.retryAfterSeconds);
     return sendJson(res, 429, { error: "Too many attempts. Try again later." }, {
