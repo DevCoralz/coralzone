@@ -25,7 +25,6 @@ import { Route as AdminPaymentsRouteImport } from './routes/admin.payments'
 import { Route as AdminSiteSettingsRouteImport } from './routes/admin.site-settings'
 import { Route as AdminTeamRouteImport } from './routes/admin.team'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
-import { Route as ApiSplatRouteImport } from './routes/api/$'
 import { Route as AdminUserUserIdRouteImport } from './routes/admin.user.$userId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -108,11 +107,6 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   path: '/admin/users',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiSplatRoute = ApiSplatRouteImport.update({
-  id: '/api/$',
-  path: '/api/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AdminUserUserIdRoute = AdminUserUserIdRouteImport.update({
   id: '/admin/user/$userId',
   path: '/admin/user/$userId',
@@ -135,7 +129,6 @@ export interface FileRoutesByFullPath {
   '/admin/site-settings': typeof AdminSiteSettingsRoute
   '/admin/team': typeof AdminTeamRoute
   '/admin/users': typeof AdminUsersRoute
-  '/api/$': typeof ApiSplatRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/user/$userId': typeof AdminUserUserIdRoute
 }
@@ -155,7 +148,6 @@ export interface FileRoutesByTo {
   '/admin/site-settings': typeof AdminSiteSettingsRoute
   '/admin/team': typeof AdminTeamRoute
   '/admin/users': typeof AdminUsersRoute
-  '/api/$': typeof ApiSplatRoute
   '/admin': typeof AdminIndexRoute
   '/admin/user/$userId': typeof AdminUserUserIdRoute
 }
@@ -176,7 +168,6 @@ export interface FileRoutesById {
   '/admin/site-settings': typeof AdminSiteSettingsRoute
   '/admin/team': typeof AdminTeamRoute
   '/admin/users': typeof AdminUsersRoute
-  '/api/$': typeof ApiSplatRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/user/$userId': typeof AdminUserUserIdRoute
 }
@@ -198,7 +189,6 @@ export interface FileRouteTypes {
     | '/admin/site-settings'
     | '/admin/team'
     | '/admin/users'
-    | '/api/$'
     | '/admin/'
     | '/admin/user/$userId'
   fileRoutesByTo: FileRoutesByTo
@@ -218,7 +208,6 @@ export interface FileRouteTypes {
     | '/admin/site-settings'
     | '/admin/team'
     | '/admin/users'
-    | '/api/$'
     | '/admin'
     | '/admin/user/$userId'
   id:
@@ -238,7 +227,6 @@ export interface FileRouteTypes {
     | '/admin/site-settings'
     | '/admin/team'
     | '/admin/users'
-    | '/api/$'
     | '/admin/'
     | '/admin/user/$userId'
   fileRoutesById: FileRoutesById
@@ -259,7 +247,6 @@ export interface RootRouteChildren {
   AdminSiteSettingsRoute: typeof AdminSiteSettingsRoute
   AdminTeamRoute: typeof AdminTeamRoute
   AdminUsersRoute: typeof AdminUsersRoute
-  ApiSplatRoute: typeof ApiSplatRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminUserUserIdRoute: typeof AdminUserUserIdRoute
 }
@@ -378,13 +365,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/$': {
-      id: '/api/$'
-      path: '/api/$'
-      fullPath: '/api/$'
-      preLoaderRoute: typeof ApiSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/admin/user/$userId': {
       id: '/admin/user/$userId'
       path: '/admin/user/$userId'
@@ -411,7 +391,6 @@ const rootRouteChildren: RootRouteChildren = {
   AdminSiteSettingsRoute: AdminSiteSettingsRoute,
   AdminTeamRoute: AdminTeamRoute,
   AdminUsersRoute: AdminUsersRoute,
-  ApiSplatRoute: ApiSplatRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminUserUserIdRoute: AdminUserUserIdRoute,
 }

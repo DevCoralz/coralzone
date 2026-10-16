@@ -12,9 +12,4 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
-  // Build for Vercel: the whole SSR app becomes ONE serverless function
-  // (plus the single api/[...path].js function), so we stay far under the
-  // Hobby plan's 12-function limit. The default cloudflare-module preset
-  // makes Vercel misdetect the output and spawn a function per route.
-  nitro: { preset: "vercel" },
 });

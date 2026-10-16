@@ -4,9 +4,8 @@ A crystal-blue ecosystem for movies, REST APIs, foreign numbers and future tools
 
 ## API
 
-`/api/*` is served by a single catch-all route (`src/routes/api/$.ts`)
-inside the app's one Vercel function — the handlers in `server/handlers`
-keep their plain Node `(req, res)` style, adapted to the web runtime:
+`/api` holds plain Vercel Node functions (no Express) — each file is its
+own serverless function:
 
 | Route | What it does |
 | --- | --- |
@@ -21,7 +20,7 @@ keep their plain Node `(req, res)` style, adapted to the web runtime:
 | `GET  /api/health`, `/api/stats`, `/api/announcements`, `POST /api/activity` | The pre-existing public homepage endpoints |
 
 Two ways to create the `users`, `email_verification_codes`, `sessions` and
-`auth_rate_limits` tables (schema in `server/handlers/_lib/schema.sql`):
+`auth_rate_limits` tables (schema in `api/_lib/schema.sql`):
 
 - **Have a terminal?** `bun run db:migrate` with `DATABASE_URL` set.
 - **No terminal (e.g. Vercel free plan)?** Set `MIGRATION_SECRET` in

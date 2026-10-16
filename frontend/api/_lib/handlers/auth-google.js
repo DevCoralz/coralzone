@@ -3,7 +3,7 @@
 // enable this; until then it redirects back with an explanatory error so
 // the button fails safely instead of 500ing.
 import { randomBytes } from "node:crypto";
-import { methodNotAllowed, getRequestOrigin } from "../_lib/http.js";
+import { methodNotAllowed, getRequestOrigin } from "../http.js";
 
 export default async function handler(req, res) {
   if (req.method !== "GET") return methodNotAllowed(res, ["GET"]);

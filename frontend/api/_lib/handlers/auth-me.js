@@ -1,6 +1,6 @@
-import { sendJson, methodNotAllowed } from "../_lib/http.js";
-import { readSessionCookie } from "../_lib/security.js";
-import { resolveSession } from "../_lib/auth-core.js";
+import { sendJson, methodNotAllowed } from "../http.js";
+import { readSessionCookie } from "../security.js";
+import { resolveSession } from "../auth-core.js";
 
 export default async function handler(req, res) {
   if (req.method !== "GET") return methodNotAllowed(res, ["GET"]);

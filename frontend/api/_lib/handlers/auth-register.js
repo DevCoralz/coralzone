@@ -1,9 +1,9 @@
-import { registerSchema, formatZodError } from "../_lib/validate.js";
-import { readJsonBody, sendJson, methodNotAllowed, isTrustedOrigin, getClientIp } from "../_lib/http.js";
-import { checkRateLimit } from "../_lib/rate-limit.js";
-import { hashPassword } from "../_lib/security.js";
-import { findUserByEmail, createUser, issueVerificationCode } from "../_lib/auth-core.js";
-import { sendVerificationEmail } from "../_lib/mailer.js";
+import { registerSchema, formatZodError } from "../validate.js";
+import { readJsonBody, sendJson, methodNotAllowed, isTrustedOrigin, getClientIp } from "../http.js";
+import { checkRateLimit } from "../rate-limit.js";
+import { hashPassword } from "../security.js";
+import { findUserByEmail, createUser, issueVerificationCode } from "../auth-core.js";
+import { sendVerificationEmail } from "../mailer.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return methodNotAllowed(res, ["POST"]);

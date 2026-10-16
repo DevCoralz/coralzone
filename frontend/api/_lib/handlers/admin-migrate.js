@@ -14,7 +14,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import mysql from "mysql2/promise";
-import { sendJson, methodNotAllowed } from "../_lib/http.js";
+import { sendJson, methodNotAllowed } from "../http.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -65,7 +65,7 @@ export default async function handler(req, res) {
     return sendJson(res, 503, { error: "DATABASE_URL is not set." });
   }
 
-  const sql = readFileSync(join(__dirname, "..", "_lib", "schema.sql"), "utf8");
+  const sql = readFileSync(join(__dirname, "..", "schema.sql"), "utf8");
   let connection;
   try {
     connection = await mysql.createConnection(parseDatabaseUrl(process.env.DATABASE_URL));

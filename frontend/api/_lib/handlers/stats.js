@@ -1,4 +1,4 @@
-import { sendJson, methodNotAllowed } from "./_lib/http.js";
+import { sendJson, methodNotAllowed } from "../http.js";
 
 // Live statistics shown on the homepage. Placeholder figures until these
 // are wired up to real counts — unrelated to the new auth tables.

@@ -1,9 +1,9 @@
-import { loginSchema, formatZodError } from "../_lib/validate.js";
-import { readJsonBody, sendJson, methodNotAllowed, isTrustedOrigin, getClientIp } from "../_lib/http.js";
-import { checkRateLimit } from "../_lib/rate-limit.js";
-import { verifyPassword, serializeSessionCookie } from "../_lib/security.js";
-import { findUserByEmail, issueVerificationCode, createSession, publicUser } from "../_lib/auth-core.js";
-import { sendVerificationEmail } from "../_lib/mailer.js";
+import { loginSchema, formatZodError } from "../validate.js";
+import { readJsonBody, sendJson, methodNotAllowed, isTrustedOrigin, getClientIp } from "../http.js";
+import { checkRateLimit } from "../rate-limit.js";
+import { verifyPassword, serializeSessionCookie } from "../security.js";
+import { findUserByEmail, issueVerificationCode, createSession, publicUser } from "../auth-core.js";
+import { sendVerificationEmail } from "../mailer.js";
 
 const GENERIC_CREDENTIALS_ERROR = "Incorrect email or password.";
 

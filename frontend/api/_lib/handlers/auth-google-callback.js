@@ -2,10 +2,10 @@
 // server-to-server (authenticated with GOOGLE_CLIENT_SECRET over TLS), so
 // the id_token in that response is trustworthy without us re-verifying its
 // signature — it never passed through the browser.
-import { methodNotAllowed, getRequestOrigin } from "../_lib/http.js";
-import { parseCookies, serializeSessionCookie } from "../_lib/security.js";
-import { query } from "../_lib/db.js";
-import { findUserByEmail, createUser, createSession } from "../_lib/auth-core.js";
+import { methodNotAllowed, getRequestOrigin } from "../http.js";
+import { parseCookies, serializeSessionCookie } from "../security.js";
+import { query } from "../db.js";
+import { findUserByEmail, createUser, createSession } from "../auth-core.js";
 
 function decodeIdTokenPayload(idToken) {
   const payloadSegment = idToken.split(".")[1];

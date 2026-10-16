@@ -1,4 +1,4 @@
-import { sendJson, methodNotAllowed } from "./_lib/http.js";
+import { sendJson, methodNotAllowed } from "../http.js";
 
 // Site activity heartbeat, backing SiteActivity.tsx.
 //
