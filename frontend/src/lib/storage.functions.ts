@@ -69,8 +69,10 @@ async function storageFetch<T>(path: string, init?: RequestInit): Promise<Storag
 
 export interface StorageFile {
   key: string;
+  name: string;
   size: number;
   updatedAt: string;
+  contentType: string;
 }
 
 export const getStorageStatus = createServerFn({ method: "GET" }).handler(async (): Promise<{ configured: boolean; online: boolean; detail: string }> => {
@@ -83,11 +85,18 @@ export const getStorageStatus = createServerFn({ method: "GET" }).handler(async 
 
 export const listStorageFiles = createServerFn({ method: "GET" }).handler(async (): Promise<{ configured: boolean; files: StorageFile[] }> => {
   const result = await storageFetch<{ files: Array<Record<string, unknown>> }>(`${STORAGE_PREFIX}/files?limit=50`);
-  const rows = (result.data?.files ?? []).map(row => ({
-    key: String(row.key ?? row.id ?? "file"),
-    size: Number(row.size ?? 0),
-    updatedAt: String(row.updatedAt ?? ""),
-  }));
+  const rows = (result.data?.files ?? []).map(row => {
+    const key = String(row.key ?? row.id ?? "file");
+    const original = [row.name, row.filename, row.file_name, row.original_name, row.original_filename, row.originalName, row.title]
+      .find(value => typeof value === "string" && value.trim());
+    return {
+      key,
+      name: typeof original === "string" ? original.trim() : "",
+      size: Number(row.size ?? 0),
+      updatedAt: String(row.updatedAt ?? row.updated_at ?? row.created_at ?? ""),
+      contentType: String(row.contentType ?? row.content_type ?? row.mime_type ?? ""),
+    };
+  });
   return { configured: result.configured && result.ok, files: rows };
 });
 
@@ -137,7 +146,7 @@ export const uploadStorageFile = createServerFn({ method: "POST" })
       dataBase64: value.dataBase64,
     };
   })
-  .handler(async ({ data }): Promise<{ configured: boolean; ok: boolean }> => {
+  .handler(async ({ data }): Promise<{ configured: boolean; ok: boolean; id: string }> => {
     // The service's /media upload takes multipart file + owner_id (Form),
     // not JSON — decode the base64 the browser sent us back into bytes and
     // repack as multipart here, server-side, so the browser payload shape
@@ -146,9 +155,30 @@ export const uploadStorageFile = createServerFn({ method: "POST" })
     const form = new FormData();
     form.set("file", new Blob([bytes], { type: data.contentType }), data.name);
     form.set("owner_id", DEFAULT_OWNER_ID);
-    const result = await storageFetch<unknown>(`${STORAGE_PREFIX}/media`, {
+    const result = await storageFetch<Record<string, unknown>>(`${STORAGE_PREFIX}/media`, {
       method: "POST",
       body: form,
     });
-    return { configured: result.configured, ok: result.ok };
+    const body = (result.data && typeof result.data === "object" ? result.data : {}) as Record<string, unknown>;
+    const nested = (body.file && typeof body.file === "object" ? body.file : {}) as Record<string, unknown>;
+    const id = String(body.id ?? body.key ?? body.media_id ?? nested.id ?? nested.key ?? "");
+    return { configured: result.configured, ok: result.ok, id };
+  });
+
+export const downloadStorageFile = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => {
+    if (typeof input !== "string" || !input.trim()) throw new Error("A file key is required");
+    return input.trim();
+  })
+  .handler(async ({ data }): Promise<{ ok: boolean; contentType: string; dataBase64: string }> => {
+    const base = storageBase();
+    if (!base) return { ok: false, contentType: "", dataBase64: "" };
+    try {
+      const response = await fetch(`${base}${STORAGE_PREFIX}/media/${encodeURIComponent(data)}`);
+      if (!response.ok) return { ok: false, contentType: "", dataBase64: "" };
+      const buffer = Buffer.from(await response.arrayBuffer());
+      return { ok: true, contentType: response.headers.get("content-type") ?? "application/octet-stream", dataBase64: buffer.toString("base64") };
+    } catch {
+      return { ok: false, contentType: "", dataBase64: "" };
+    }
   });

@@ -5,6 +5,6 @@ import { dashboardHead } from '@/lib/dashboard-head';
 
 export const Route = createFileRoute('/cloud')({
   loader: () => getBrandMetadata(),
-  head: ({ loaderData }) => dashboardHead('Cloud', 'CoralzOne Cloud — storage, pricing, API keys, usage and docs in one place.', '/cloud', loaderData?.origin),
+  head: ({ loaderData }) => dashboardHead('Cloud', 'CloudOne: storage, API keys, usage and docs.', '/cloud', loaderData?.origin),
   component: () => <CloudShell><Outlet /></CloudShell>,
 });

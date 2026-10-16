@@ -7,7 +7,7 @@ import { getBrandMetadata } from '@/lib/brand.functions';
 
 export const Route = createFileRoute('/cloud/api-keys')({
   loader: () => getBrandMetadata(),
-  head: ({ loaderData }) => dashboardHead('Cloud API keys', 'Create and manage the API keys your apps use with CoralzOne Cloud.', '/cloud/api-keys', loaderData?.origin),
+  head: ({ loaderData }) => dashboardHead('Cloud API keys', 'Create and manage your API keys.', '/cloud/api-keys', loaderData?.origin),
   component: Page,
 });
 
@@ -59,46 +59,44 @@ function Page() {
   const masked = (key: string) => `${key.slice(0, 12)}${'•'.repeat(18)}`;
 
   return <>
-    <p className="text-xs text-muted-foreground">Keys authenticate your apps against CoralzOne Cloud.</p>
-    <h1 className="mt-2 font-display text-3xl font-normal sm:text-4xl">API keys</h1>
-    <p className="mt-3 max-w-xl text-sm text-muted-foreground">Send your key as an <code className="text-primary-glow">X-API-Key</code> header on every request. Never share keys publicly — revoke and replace any key that leaks.</p>
+    <h1 className="font-display text-3xl font-normal sm:text-4xl">API keys</h1>
+    <p className="mt-3 max-w-xl text-sm text-muted-foreground">Send your key in the <code className="text-primary-glow">X-API-Key</code> header. If one leaks, delete it and make a new one.</p>
 
     <section className="dashboard-panel mt-8 p-6">
-      <h2 className="font-display text-xl font-normal">Create a key</h2>
+      <h2 className="font-display text-xl font-normal">New key</h2>
       <div className="mt-4 flex flex-wrap gap-3">
         <input
           value={label}
           onChange={event => setLabel(event.target.value)}
-          placeholder="Key name — e.g. Mobile app"
+          placeholder="Name, e.g. Mobile app"
           aria-label="API key name"
           className="h-11 flex-1 rounded-lg border border-glass-border bg-transparent px-4 text-sm outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-primary-glow"
         />
-        <Button variant="crystal" onClick={createKey} className="h-11 px-5 font-normal"><Plus />Create key</Button>
+        <Button variant="crystal" onClick={createKey} className="h-11 px-5 font-normal"><Plus />Create</Button>
       </div>
     </section>
 
     <section className="dashboard-panel mt-6 overflow-hidden">
       <div className="border-b border-glass-border p-5"><h2 className="font-display text-xl font-normal">Your keys</h2></div>
       {keys.length === 0
-        ? <p className="p-6 text-sm text-muted-foreground">No keys yet. Create one above — the first key is free on every plan.</p>
+        ? <p className="p-6 text-sm text-muted-foreground">No keys yet.</p>
         : <div className="divide-y divide-glass-border">
           {keys.map(entry => (
             <div key={entry.id} className="flex flex-wrap items-center gap-3 p-4 sm:px-6">
               <span className="dashboard-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"><KeyRound size={17} /></span>
               <div className="min-w-0">
                 <p className="text-sm">{entry.label}</p>
-                <p className="mt-1 font-mono text-xs text-muted-foreground">{revealed === entry.id ? entry.key : masked(entry.key)} · created {entry.created}</p>
+                <p className="mt-1 font-mono text-xs text-muted-foreground">{revealed === entry.id ? entry.key : masked(entry.key)} · {entry.created}</p>
               </div>
               <div className="ml-auto flex shrink-0 gap-2">
                 <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" aria-label={revealed === entry.id ? 'Hide key' : 'Reveal key'} onClick={() => setRevealed(revealed === entry.id ? null : entry.id)}>{revealed === entry.id ? '••' : '👁'}</Button>
                 <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" aria-label="Copy key" onClick={() => copy(entry.key)}>{copied === entry.key ? <Check size={15} className="text-online" /> : <Copy size={15} />}</Button>
-                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg text-destructive" aria-label={`Revoke ${entry.label}`} onClick={() => revoke(entry.id)}><Trash2 size={15} /></Button>
+                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg text-destructive" aria-label={`Delete ${entry.label}`} onClick={() => revoke(entry.id)}><Trash2 size={15} /></Button>
               </div>
             </div>
           ))}
         </div>}
     </section>
 
-    <p className="mt-5 text-xs text-muted-foreground">Keys shown here are preview keys for now — they will move to your account automatically when live keys switch on.</p>
   </>;
 }
