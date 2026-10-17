@@ -12,3 +12,10 @@ export const getIsAdmin = createServerFn({ method: "GET" }).handler(async (): Pr
   if (!user?.email) return false;
   return user.email.trim().toLowerCase() === adminEmail;
 });
+
+// Call at the top of every admin server function. A server function has its
+// own HTTP endpoint, so the route's beforeLoad guard alone is not enough.
+export async function requireAdmin(): Promise<void> {
+  const isAdmin = await getIsAdmin();
+  if (!isAdmin) throw new Error("Not authorized.");
+}

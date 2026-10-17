@@ -124,3 +124,33 @@ CREATE TABLE IF NOT EXISTS storage_extra_purchases (
   UNIQUE KEY uniq_storage_extra_purchases_reference (paystack_reference),
   CONSTRAINT fk_storage_extra_purchases_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ── Cloud admin (build step 1) ──────────────────────────────────────────────
+-- Global storage settings, edited from /admin/cloud/settings (build step 2).
+-- One row per setting; value_json holds a JSON scalar/object as text. Code
+-- always falls back to src/lib/storage-plans.ts defaults when a key has no
+-- row, so an empty table is a valid, working state.
+CREATE TABLE IF NOT EXISTS storage_settings (
+  setting_key VARCHAR(64) NOT NULL PRIMARY KEY,
+  value_json TEXT NOT NULL,
+  updated_by CHAR(36) NULL,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_storage_settings_user FOREIGN KEY (updated_by) REFERENCES users (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Append-only record of every admin action that changes something (freeze a
+-- bucket, ban a user, change a limit, ...). Written by the server only, never
+-- editable from the UI. admin_user_id is nulled if that admin is deleted so
+-- the history itself survives.
+CREATE TABLE IF NOT EXISTS admin_action_log (
+  id CHAR(36) NOT NULL PRIMARY KEY,
+  admin_user_id CHAR(36) NULL,
+  action VARCHAR(64) NOT NULL,
+  target_type VARCHAR(32) NOT NULL,
+  target_id VARCHAR(64) NULL,
+  details TEXT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_admin_action_log_created (created_at),
+  KEY idx_admin_action_log_target (target_type, target_id),
+  CONSTRAINT fk_admin_action_log_user FOREIGN KEY (admin_user_id) REFERENCES users (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

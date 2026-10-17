@@ -26,7 +26,7 @@
 // supplied owner id for anything that writes or deletes.
 import { createServerFn } from "@tanstack/react-start";
 import { getSession } from "./auth-session.functions";
-import { getIsAdmin } from "./admin.functions";
+import { requireAdmin } from "./admin.functions";
 import { STORAGE_PLANS, DEFAULT_STORAGE_PLAN } from "./storage-plans";
 
 const STORAGE_PREFIX = "/api/v1/storage";
@@ -244,11 +244,6 @@ export const downloadMyStorageFile = createServerFn({ method: "POST" })
 // --- Admin-scoped: /admin/cloud only. Re-checks getIsAdmin() itself rather
 // than trusting the route's beforeLoad, because this function has its own
 // callable HTTP endpoint independent of which page renders a button for it.
-
-async function requireAdmin(): Promise<void> {
-  const isAdmin = await getIsAdmin();
-  if (!isAdmin) throw new Error("Not authorized.");
-}
 
 export const adminGetStorageUsage = createServerFn({ method: "GET" }).handler(async (): Promise<StorageUsage> => {
   await requireAdmin();

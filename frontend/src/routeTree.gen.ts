@@ -22,6 +22,13 @@ import { Route as WalletRouteImport } from './routes/wallet'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminAdsRouteImport } from './routes/admin.ads'
 import { Route as AdminCloudRouteImport } from './routes/admin.cloud'
+import { Route as AdminCloudIndexRouteImport } from './routes/admin.cloud.index'
+import { Route as AdminCloudBucketsRouteImport } from './routes/admin.cloud.buckets'
+import { Route as AdminCloudUsersRouteImport } from './routes/admin.cloud.users'
+import { Route as AdminCloudFilesRouteImport } from './routes/admin.cloud.files'
+import { Route as AdminCloudApiKeysRouteImport } from './routes/admin.cloud.api-keys'
+import { Route as AdminCloudBillingRouteImport } from './routes/admin.cloud.billing'
+import { Route as AdminCloudSettingsRouteImport } from './routes/admin.cloud.settings'
 import { Route as AdminPaymentsRouteImport } from './routes/admin.payments'
 import { Route as AdminSiteSettingsRouteImport } from './routes/admin.site-settings'
 import { Route as AdminTeamRouteImport } from './routes/admin.team'
@@ -100,6 +107,41 @@ const AdminCloudRoute = AdminCloudRouteImport.update({
   path: '/admin/cloud',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminCloudIndexRoute = AdminCloudIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminCloudRoute,
+} as any)
+const AdminCloudBucketsRoute = AdminCloudBucketsRouteImport.update({
+  id: '/buckets',
+  path: '/buckets',
+  getParentRoute: () => AdminCloudRoute,
+} as any)
+const AdminCloudUsersRoute = AdminCloudUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminCloudRoute,
+} as any)
+const AdminCloudFilesRoute = AdminCloudFilesRouteImport.update({
+  id: '/files',
+  path: '/files',
+  getParentRoute: () => AdminCloudRoute,
+} as any)
+const AdminCloudApiKeysRoute = AdminCloudApiKeysRouteImport.update({
+  id: '/api-keys',
+  path: '/api-keys',
+  getParentRoute: () => AdminCloudRoute,
+} as any)
+const AdminCloudBillingRoute = AdminCloudBillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => AdminCloudRoute,
+} as any)
+const AdminCloudSettingsRoute = AdminCloudSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminCloudRoute,
+} as any)
 const AdminPaymentsRoute = AdminPaymentsRouteImport.update({
   id: '/admin/payments',
   path: '/admin/payments',
@@ -173,7 +215,13 @@ export interface FileRoutesByFullPath {
   '/support': typeof SupportRoute
   '/wallet': typeof WalletRoute
   '/admin/ads': typeof AdminAdsRoute
-  '/admin/cloud': typeof AdminCloudRoute
+  '/admin/cloud': typeof AdminCloudRouteWithChildren
+  '/admin/cloud/buckets': typeof AdminCloudBucketsRoute
+  '/admin/cloud/users': typeof AdminCloudUsersRoute
+  '/admin/cloud/files': typeof AdminCloudFilesRoute
+  '/admin/cloud/api-keys': typeof AdminCloudApiKeysRoute
+  '/admin/cloud/billing': typeof AdminCloudBillingRoute
+  '/admin/cloud/settings': typeof AdminCloudSettingsRoute
   '/admin/payments': typeof AdminPaymentsRoute
   '/admin/site-settings': typeof AdminSiteSettingsRoute
   '/admin/team': typeof AdminTeamRoute
@@ -199,7 +247,13 @@ export interface FileRoutesByTo {
   '/support': typeof SupportRoute
   '/wallet': typeof WalletRoute
   '/admin/ads': typeof AdminAdsRoute
-  '/admin/cloud': typeof AdminCloudRoute
+  '/admin/cloud': typeof AdminCloudIndexRoute
+  '/admin/cloud/buckets': typeof AdminCloudBucketsRoute
+  '/admin/cloud/users': typeof AdminCloudUsersRoute
+  '/admin/cloud/files': typeof AdminCloudFilesRoute
+  '/admin/cloud/api-keys': typeof AdminCloudApiKeysRoute
+  '/admin/cloud/billing': typeof AdminCloudBillingRoute
+  '/admin/cloud/settings': typeof AdminCloudSettingsRoute
   '/admin/payments': typeof AdminPaymentsRoute
   '/admin/site-settings': typeof AdminSiteSettingsRoute
   '/admin/team': typeof AdminTeamRoute
@@ -227,7 +281,14 @@ export interface FileRoutesById {
   '/support': typeof SupportRoute
   '/wallet': typeof WalletRoute
   '/admin/ads': typeof AdminAdsRoute
-  '/admin/cloud': typeof AdminCloudRoute
+  '/admin/cloud': typeof AdminCloudRouteWithChildren
+  '/admin/cloud/': typeof AdminCloudIndexRoute
+  '/admin/cloud/buckets': typeof AdminCloudBucketsRoute
+  '/admin/cloud/users': typeof AdminCloudUsersRoute
+  '/admin/cloud/files': typeof AdminCloudFilesRoute
+  '/admin/cloud/api-keys': typeof AdminCloudApiKeysRoute
+  '/admin/cloud/billing': typeof AdminCloudBillingRoute
+  '/admin/cloud/settings': typeof AdminCloudSettingsRoute
   '/admin/payments': typeof AdminPaymentsRoute
   '/admin/site-settings': typeof AdminSiteSettingsRoute
   '/admin/team': typeof AdminTeamRoute
@@ -257,6 +318,13 @@ export interface FileRouteTypes {
     | '/wallet'
     | '/admin/ads'
     | '/admin/cloud'
+    | '/admin/cloud/'
+    | '/admin/cloud/buckets'
+    | '/admin/cloud/users'
+    | '/admin/cloud/files'
+    | '/admin/cloud/api-keys'
+    | '/admin/cloud/billing'
+    | '/admin/cloud/settings'
     | '/admin/payments'
     | '/admin/site-settings'
     | '/admin/team'
@@ -283,6 +351,12 @@ export interface FileRouteTypes {
     | '/wallet'
     | '/admin/ads'
     | '/admin/cloud'
+    | '/admin/cloud/buckets'
+    | '/admin/cloud/users'
+    | '/admin/cloud/files'
+    | '/admin/cloud/api-keys'
+    | '/admin/cloud/billing'
+    | '/admin/cloud/settings'
     | '/admin/payments'
     | '/admin/site-settings'
     | '/admin/team'
@@ -310,6 +384,13 @@ export interface FileRouteTypes {
     | '/wallet'
     | '/admin/ads'
     | '/admin/cloud'
+    | '/admin/cloud/'
+    | '/admin/cloud/buckets'
+    | '/admin/cloud/users'
+    | '/admin/cloud/files'
+    | '/admin/cloud/api-keys'
+    | '/admin/cloud/billing'
+    | '/admin/cloud/settings'
     | '/admin/payments'
     | '/admin/site-settings'
     | '/admin/team'
@@ -337,7 +418,7 @@ export interface RootRouteChildren {
   SupportRoute: typeof SupportRoute
   WalletRoute: typeof WalletRoute
   AdminAdsRoute: typeof AdminAdsRoute
-  AdminCloudRoute: typeof AdminCloudRoute
+  AdminCloudRoute: typeof AdminCloudRouteWithChildren
   AdminPaymentsRoute: typeof AdminPaymentsRoute
   AdminSiteSettingsRoute: typeof AdminSiteSettingsRoute
   AdminTeamRoute: typeof AdminTeamRoute
@@ -438,6 +519,55 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/cloud'
       preLoaderRoute: typeof AdminCloudRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/admin/cloud/': {
+      id: '/admin/cloud/'
+      path: '/'
+      fullPath: '/admin/cloud/'
+      preLoaderRoute: typeof AdminCloudIndexRouteImport
+      parentRoute: typeof AdminCloudRoute
+    }
+    '/admin/cloud/buckets': {
+      id: '/admin/cloud/buckets'
+      path: '/buckets'
+      fullPath: '/admin/cloud/buckets'
+      preLoaderRoute: typeof AdminCloudBucketsRouteImport
+      parentRoute: typeof AdminCloudRoute
+    }
+    '/admin/cloud/users': {
+      id: '/admin/cloud/users'
+      path: '/users'
+      fullPath: '/admin/cloud/users'
+      preLoaderRoute: typeof AdminCloudUsersRouteImport
+      parentRoute: typeof AdminCloudRoute
+    }
+    '/admin/cloud/files': {
+      id: '/admin/cloud/files'
+      path: '/files'
+      fullPath: '/admin/cloud/files'
+      preLoaderRoute: typeof AdminCloudFilesRouteImport
+      parentRoute: typeof AdminCloudRoute
+    }
+    '/admin/cloud/api-keys': {
+      id: '/admin/cloud/api-keys'
+      path: '/api-keys'
+      fullPath: '/admin/cloud/api-keys'
+      preLoaderRoute: typeof AdminCloudApiKeysRouteImport
+      parentRoute: typeof AdminCloudRoute
+    }
+    '/admin/cloud/billing': {
+      id: '/admin/cloud/billing'
+      path: '/billing'
+      fullPath: '/admin/cloud/billing'
+      preLoaderRoute: typeof AdminCloudBillingRouteImport
+      parentRoute: typeof AdminCloudRoute
+    }
+    '/admin/cloud/settings': {
+      id: '/admin/cloud/settings'
+      path: '/settings'
+      fullPath: '/admin/cloud/settings'
+      preLoaderRoute: typeof AdminCloudSettingsRouteImport
+      parentRoute: typeof AdminCloudRoute
     }
     '/admin/payments': {
       id: '/admin/payments'
@@ -548,6 +678,30 @@ const CloudRouteChildren: CloudRouteChildren = {
 
 const CloudRouteWithChildren = CloudRoute._addFileChildren(CloudRouteChildren)
 
+interface AdminCloudRouteChildren {
+  AdminCloudIndexRoute: typeof AdminCloudIndexRoute
+  AdminCloudBucketsRoute: typeof AdminCloudBucketsRoute
+  AdminCloudUsersRoute: typeof AdminCloudUsersRoute
+  AdminCloudFilesRoute: typeof AdminCloudFilesRoute
+  AdminCloudApiKeysRoute: typeof AdminCloudApiKeysRoute
+  AdminCloudBillingRoute: typeof AdminCloudBillingRoute
+  AdminCloudSettingsRoute: typeof AdminCloudSettingsRoute
+}
+
+const AdminCloudRouteChildren: AdminCloudRouteChildren = {
+  AdminCloudIndexRoute: AdminCloudIndexRoute,
+  AdminCloudBucketsRoute: AdminCloudBucketsRoute,
+  AdminCloudUsersRoute: AdminCloudUsersRoute,
+  AdminCloudFilesRoute: AdminCloudFilesRoute,
+  AdminCloudApiKeysRoute: AdminCloudApiKeysRoute,
+  AdminCloudBillingRoute: AdminCloudBillingRoute,
+  AdminCloudSettingsRoute: AdminCloudSettingsRoute,
+}
+
+const AdminCloudRouteWithChildren = AdminCloudRoute._addFileChildren(
+  AdminCloudRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRoute,
@@ -560,7 +714,7 @@ const rootRouteChildren: RootRouteChildren = {
   SupportRoute: SupportRoute,
   WalletRoute: WalletRoute,
   AdminAdsRoute: AdminAdsRoute,
-  AdminCloudRoute: AdminCloudRoute,
+  AdminCloudRoute: AdminCloudRouteWithChildren,
   AdminPaymentsRoute: AdminPaymentsRoute,
   AdminSiteSettingsRoute: AdminSiteSettingsRoute,
   AdminTeamRoute: AdminTeamRoute,

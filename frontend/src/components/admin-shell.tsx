@@ -29,7 +29,9 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-export function AdminShell({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
+// `live` hides the demo-data badge and preview banner for sections that are
+// wired to real data (the Cloud admin tree). Every other section keeps them.
+export function AdminShell({ title, subtitle, live = false, children }: { title: string; subtitle: string; live?: boolean; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="dashboard-shell relative isolate min-h-screen overflow-x-clip">
@@ -59,11 +61,13 @@ export function AdminShell({ title, subtitle, children }: { title: string; subti
               <p className="text-xs text-muted-foreground">{subtitle}</p>
             </div>
           </div>
-          <span className="dashboard-demo rounded-full px-3 py-1 text-[10px] uppercase tracking-widest">Demo data</span>
+          {!live && <span className="dashboard-demo rounded-full px-3 py-1 text-[10px] uppercase tracking-widest">Demo data</span>}
         </header>
-        <p className="border-b border-glass-border px-5 py-2 text-[11px] text-muted-foreground sm:px-8">
-          Preview workspace — actions change this screen only; nothing is saved to a live service yet.
-        </p>
+        {!live && (
+          <p className="border-b border-glass-border px-5 py-2 text-[11px] text-muted-foreground sm:px-8">
+            Preview workspace — actions change this screen only; nothing is saved to a live service yet.
+          </p>
+        )}
         <main className="px-5 py-6 sm:px-8 sm:py-8">{children}</main>
       </div>
     </div>
