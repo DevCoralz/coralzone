@@ -21,7 +21,7 @@ function formatBytes(bytes: number) {
 
 function Page() {
   const [status, setStatus] = useState<{ configured: boolean; online: boolean; detail: string } | null>(null);
-  const [usage, setUsage] = useState<{ configured: boolean; bytesUsed: number; bytesQuota: number; requests: number } | null>(null);
+  const [usage, setUsage] = useState<{ configured: boolean; bytesUsed: number; bytesQuota: number; requests: number; access?: { planLabel: string } | null } | null>(null);
 
   useEffect(() => {
     getStorageStatus().then(setStatus);
@@ -44,7 +44,7 @@ function Page() {
     </section>
 
     <div className="mt-6 grid gap-3 sm:grid-cols-3 sm:gap-5">
-      <div className="dashboard-panel dashboard-stat block p-3 sm:p-5"><HardDrive size={18} className="text-primary-glow" /><p className="mt-4 text-[10px] text-muted-foreground sm:text-xs">Storage used</p><p className="mt-1 text-2xl font-normal sm:text-3xl">{usage?.configured ? formatBytes(usage.bytesUsed) : '0 GB'}</p><p className="mt-2 text-[9px] text-muted-foreground sm:text-xs">{usage?.configured && usage.bytesQuota ? `of ${formatBytes(usage.bytesQuota)}` : 'Free plan'}</p></div>
+      <div className="dashboard-panel dashboard-stat block p-3 sm:p-5"><HardDrive size={18} className="text-primary-glow" /><p className="mt-4 text-[10px] text-muted-foreground sm:text-xs">Storage used</p><p className="mt-1 text-2xl font-normal sm:text-3xl">{usage?.configured ? formatBytes(usage.bytesUsed) : '0 GB'}</p><p className="mt-2 text-[9px] text-muted-foreground sm:text-xs">{usage?.configured && usage.bytesQuota ? `of ${formatBytes(usage.bytesQuota)}${usage.access ? ` · ${usage.access.planLabel}` : ''}` : 'Free plan'}</p></div>
       <div className="dashboard-panel dashboard-stat block p-3 sm:p-5"><Activity size={18} className="text-primary-glow" /><p className="mt-4 text-[10px] text-muted-foreground sm:text-xs">Requests</p><p className="mt-1 text-2xl font-normal sm:text-3xl">{usage?.configured ? usage.requests.toLocaleString() : '0'}</p><p className="mt-2 text-[9px] text-muted-foreground sm:text-xs">This month</p></div>
       <div className="dashboard-panel dashboard-stat block p-3 sm:p-5"><KeyRound size={18} className="text-primary-glow" /><p className="mt-4 text-[10px] text-muted-foreground sm:text-xs">Status</p><p className="mt-1 text-lg font-normal sm:text-xl">{connected ? 'Online' : 'Offline'}</p><p className="mt-2 text-[9px] text-muted-foreground sm:text-xs">{connected ? 'All good' : 'Not reachable'}</p></div>
     </div>

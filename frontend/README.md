@@ -30,6 +30,12 @@ Two ways to create the `users`, `email_verification_codes`, `sessions` and
   EXISTS`) — once it reports success, delete or change `MIGRATION_SECRET`
   so the URL stops working for anyone else who finds it.
 
+> **After updating to the quota engine (Cloud step 3), run the migration
+> again.** It adds the `storage_user_bans` table and relaxes two columns on
+> `storage_quotas`. Until it runs, Cloud uploads are refused with "could not
+> verify your storage plan" — that is deliberate (a ban or freeze must never
+> be skippable by a failed lookup). Re-running is safe.
+
 Copy `.env.example` to `.env` for local dev, and set the same variables on
 Vercel.
 

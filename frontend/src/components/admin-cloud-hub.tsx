@@ -61,7 +61,7 @@ export function AdminCloudHub() {
           </div>
           <p className="mt-4 text-base font-normal">{section.label}</p>
           <p className="mt-1 text-xs text-muted-foreground">{section.description}</p>
-          <p className="mt-3 text-[10px] uppercase tracking-widest text-muted-foreground">{section.status === 'live' ? 'Live' : `Step ${section.step}`}</p>
+          <p className="mt-3 text-[10px] uppercase tracking-widest text-muted-foreground">{section.status === 'live' ? 'Live' : section.status === 'partial' ? `Partly live · more in step ${section.step}` : `Step ${section.step}`}</p>
         </Link>
       ))}
     </div>

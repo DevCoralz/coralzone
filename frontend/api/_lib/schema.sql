@@ -86,8 +86,8 @@ CREATE TABLE IF NOT EXISTS storage_buckets (
 CREATE TABLE IF NOT EXISTS storage_quotas (
   user_id CHAR(36) NOT NULL PRIMARY KEY,
   plan ENUM('starter', 'pro', 'scale') NOT NULL DEFAULT 'starter',
-  bytes_quota BIGINT UNSIGNED NOT NULL,
-  max_upload_bytes BIGINT UNSIGNED NOT NULL,
+  bytes_quota BIGINT UNSIGNED NULL,
+  max_upload_bytes BIGINT UNSIGNED NULL,
   extra_bytes BIGINT UNSIGNED NOT NULL DEFAULT 0,
   status ENUM('active', 'frozen') NOT NULL DEFAULT 'active',
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -153,4 +153,34 @@ CREATE TABLE IF NOT EXISTS admin_action_log (
   KEY idx_admin_action_log_created (created_at),
   KEY idx_admin_action_log_target (target_type, target_id),
   CONSTRAINT fk_admin_action_log_user FOREIGN KEY (admin_user_id) REFERENCES users (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ── Cloud quota engine (build step 3) ───────────────────────────────────────
+-- storage_quotas is now read and written (see storage-quota-core.js). Its
+-- meaning, as of this step:
+--   plan              the user's plan. No row at all = Starter defaults.
+--   bytes_quota       NULL = follow the plan's quota from the admin settings;
+--                     a number = a manual per-user quota (extra storage is
+--                     still added on top).
+--   max_upload_bytes  NULL = follow the plan's per-file limit; a number = a
+--                     manual per-user per-file limit (still never above the
+--                     global max upload).
+--   extra_bytes       purchased / manually granted extra storage.
+--   status            'frozen' blocks new uploads (downloads still work).
+-- Existing installs created these two columns NOT NULL; the MODIFY below
+-- relaxes them. It is safe to run any number of times.
+ALTER TABLE storage_quotas MODIFY bytes_quota BIGINT UNSIGNED NULL;
+ALTER TABLE storage_quotas MODIFY max_upload_bytes BIGINT UNSIGNED NULL;
+
+-- A ban is a separate table (not a column on users) so this migration stays
+-- additive and idempotent. A row = banned from Cloud storage only; the rest
+-- of the site is unaffected. Deleting the row lifts the ban. The reason is
+-- admin-only: the API never returns it to the banned user.
+CREATE TABLE IF NOT EXISTS storage_user_bans (
+  user_id CHAR(36) NOT NULL PRIMARY KEY,
+  reason VARCHAR(200) NULL,
+  banned_by CHAR(36) NULL,
+  banned_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_storage_user_bans_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+  CONSTRAINT fk_storage_user_bans_admin FOREIGN KEY (banned_by) REFERENCES users (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

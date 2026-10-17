@@ -33,6 +33,8 @@ import authGoogle from "./_lib/handlers/auth-google.js";
 import authGoogleCallback from "./_lib/handlers/auth-google-callback.js";
 import cloudSettings from "./_lib/handlers/cloud-settings.js";
 import adminCloudSettings from "./_lib/handlers/admin-cloud-settings.js";
+import cloudEntitlement from "./_lib/handlers/cloud-entitlement.js";
+import adminCloudUserControls from "./_lib/handlers/admin-cloud-user-controls.js";
 
 // Keyed by "<METHOD> /path" — each handler still checks req.method itself
 // too (defense in depth / unit-testability), this table just decides
@@ -54,6 +56,9 @@ const routes = {
   "GET /cloud/settings": cloudSettings,
   "GET /admin/cloud-settings": adminCloudSettings,
   "PUT /admin/cloud-settings": adminCloudSettings,
+  "GET /cloud/entitlement": cloudEntitlement,
+  "GET /admin/cloud-user-controls": adminCloudUserControls,
+  "PUT /admin/cloud-user-controls": adminCloudUserControls,
 };
 
 // Recognizable messages from our own config-validation checks (missing

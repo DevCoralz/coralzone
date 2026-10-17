@@ -80,6 +80,6 @@ export default async function handler(req, res) {
   return sendJson(res, 200, {
     ok: true,
     message:
-      "users, email_verification_codes, sessions and auth_rate_limits are ready. Now remove or change MIGRATION_SECRET in Vercel env vars.",
+      "Auth and Cloud storage tables (including quotas and bans) are ready. Now remove or change MIGRATION_SECRET in Vercel env vars.",
   });
 }

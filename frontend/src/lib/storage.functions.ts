@@ -27,10 +27,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getSession } from "./auth-session.functions";
 import { requireAdmin } from "./admin.functions";
-import { DEFAULT_STORAGE_PLAN } from "./storage-plans";
-import { effectivePlan, allowedMimeTypes, maintenanceMessage } from "./storage-settings";
-import { loadEffectiveSettings } from "./storage-settings.server";
-import { formatBytes } from "./format";
+import { allowedMimeTypes } from "./storage-settings";
+import { checkUpload, summarizeQuota, type QuotaSummary } from "./storage-quota";
+import { loadMyQuota, QUOTA_UNAVAILABLE } from "./storage-quota.server";
 
 const STORAGE_PREFIX = "/api/v1/storage";
 
@@ -130,9 +129,12 @@ export interface StorageUsage {
   bytesQuota: number;
   requests: number;
   daily: Array<{ date: string; requests: number }>;
+  // The signed-in user's plan and limits; null on the admin (platform-wide)
+  // view and when the entitlement could not be verified.
+  access: QuotaSummary | null;
 }
 
-function mapUsage(result: StorageResult<Record<string, unknown>>, bytesQuota: number): StorageUsage {
+function mapUsage(result: StorageResult<Record<string, unknown>>, bytesQuota: number, access: QuotaSummary | null): StorageUsage {
   const data = (result.data && typeof result.data === "object" ? result.data : {}) as Record<string, unknown>;
   const bytesUsed = Number(data.bytesUsed ?? 0);
   const requests = Number(data.requests ?? 0);
@@ -140,7 +142,7 @@ function mapUsage(result: StorageResult<Record<string, unknown>>, bytesQuota: nu
   const daily = (rawDaily ?? [])
     .map(row => ({ date: String(row.date ?? row.day ?? row.label ?? "").slice(0, 10), requests: Number(row.requests ?? row.count ?? row.total ?? 0) }))
     .filter(row => row.date);
-  return { configured: result.configured && result.ok, bytesUsed, bytesQuota, requests, daily };
+  return { configured: result.configured && result.ok, bytesUsed, bytesQuota, requests, daily, access };
 }
 
 // --- User-scoped: every /cloud/* page. Never accept an owner id as input —
@@ -154,11 +156,20 @@ async function requireSignedInUserId(): Promise<string> {
 
 export const getMyStorageUsage = createServerFn({ method: "GET" }).handler(async (): Promise<StorageUsage> => {
   const userId = await requireSignedInUserId();
-  // Per-user plans arrive with the quota engine (build step 3); until then
-  // everyone is on the default plan, with its quota from the admin settings.
-  const quota = effectivePlan(DEFAULT_STORAGE_PLAN, await loadEffectiveSettings());
+  // The quota engine: this user's plan + extra storage + manual limits, over
+  // the live admin settings. null = could not verify, shown as "no plan".
+  const context = await loadMyQuota();
   const result = await storageFetch<Record<string, unknown>>(`${STORAGE_PREFIX}/usage?owner_id=${encodeURIComponent(userId)}`);
-  return mapUsage(result, quota.bytesQuota);
+  return mapUsage(result, context?.quota.bytesQuota ?? 0, context ? summarizeQuota(context.quota) : null);
+});
+
+// Light call for the upload page: plan, per-file limit and any block, without
+// touching the storage service. Lets the browser refuse an oversized file
+// before sending gigabytes the server would only reject.
+export const getMyStorageAccess = createServerFn({ method: "GET" }).handler(async (): Promise<QuotaSummary | null> => {
+  await requireSignedInUserId();
+  const context = await loadMyQuota();
+  return context ? summarizeQuota(context.quota) : null;
 });
 
 export const listMyStorageFiles = createServerFn({ method: "GET" }).handler(async (): Promise<{ configured: boolean; files: StorageFile[] }> => {
@@ -175,6 +186,9 @@ export const deleteMyStorageFile = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }): Promise<{ configured: boolean; ok: boolean }> => {
     const userId = await requireSignedInUserId();
+    // A banned user's files stay put for admin review: no deleting either.
+    const context = await loadMyQuota();
+    if (!context || context.quota.banned) return { configured: true, ok: false };
     // The service requires owner_id as multipart/form-data on DELETE and
     // 404s if it doesn't match the file's stored owner — this is what
     // actually stops one user from deleting another user's file; the
@@ -203,32 +217,30 @@ export const uploadMyStorageFile = createServerFn({ method: "POST" })
     const userId = await requireSignedInUserId();
     const file = data.get("file") as File;
 
-    // Admin-controlled gates first, in order: storage maintenance mode, then
-    // the effective per-file cap (plan cap, never above the global ceiling).
-    // The same cap and the allowed MIME list are ALSO sent to the storage
-    // service below, which re-checks them against the bytes it actually
-    // receives — so a tampered client can't dodge them.
-    const settings = await loadEffectiveSettings();
-    if (settings.maintenance.enabled) {
-      return { configured: true, ok: false, id: "", error: maintenanceMessage(settings) };
-    }
-    const plan = effectivePlan(DEFAULT_STORAGE_PLAN, settings);
-    if (file.size > plan.maxUploadBytes) {
-      const capped = settings.globalMaxUploadBytes < settings.planQuotas[plan.id].maxUploadBytes;
-      return {
-        configured: true,
-        ok: false,
-        id: "",
-        error: capped
-          ? `Uploads are limited to ${formatBytes(plan.maxUploadBytes)} per file right now.`
-          : `File too large for the ${plan.label} plan (max ${formatBytes(plan.maxUploadBytes)}). Upgrade for larger uploads.`,
-      };
-    }
+    // The quota engine decides, in order: maintenance mode, banned, frozen,
+    // per-file limit (plan or manual override, never above the global max),
+    // then free space. Fails CLOSED if the plan can't be verified. The same
+    // limits are ALSO sent to the storage service below, which re-checks them
+    // against the bytes it actually receives, so a tampered client can't
+    // dodge them.
+    const context = await loadMyQuota();
+    if (!context) return { configured: true, ok: false, id: "", error: QUOTA_UNAVAILABLE };
+    const { settings, quota } = context;
+    if (quota.blockMessage) return { configured: true, ok: false, id: "", error: quota.blockMessage };
+
+    const usage = await storageFetch<Record<string, unknown>>(`${STORAGE_PREFIX}/usage?owner_id=${encodeURIComponent(userId)}`);
+    if (!usage.configured) return { configured: false, ok: false, id: "", error: undefined };
+    if (!usage.ok) return { configured: true, ok: false, id: "", error: "We could not check your free storage space. Please try again." };
+    const bytesUsed = Number((usage.data as Record<string, unknown> | null)?.bytesUsed ?? 0);
+
+    const decision = checkUpload(quota, settings, file.size, Number.isFinite(bytesUsed) ? bytesUsed : 0);
+    if (!decision.ok) return { configured: true, ok: false, id: "", error: decision.error };
 
     const form = new FormData();
     form.set("file", file, file.name);
     form.set("owner_id", userId);
-    form.set("max_bytes", String(plan.maxUploadBytes));
+    form.set("max_bytes", String(quota.maxUploadBytes));
+    form.set("quota_bytes", String(quota.bytesQuota));
     form.set("allowed_mime", JSON.stringify(allowedMimeTypes(settings.allowedFileGroups)));
     const result = await storageFetch<Record<string, unknown>>(`${STORAGE_PREFIX}/media`, {
       method: "POST",
@@ -261,6 +273,10 @@ export const downloadMyStorageFile = createServerFn({ method: "POST" })
     // keeps this app's own download button off limits to signed-out
     // visitors, even though the underlying URL isn't secret.
     await requireSignedInUserId();
+    // Banned users lose downloads through the app too (their files are kept
+    // for admin review). Fails closed if the plan can't be verified.
+    const context = await loadMyQuota();
+    if (!context || context.quota.banned) return { ok: false, contentType: "", dataBase64: "" };
     const base = storageBase();
     if (!base) return { ok: false, contentType: "", dataBase64: "" };
     try {
@@ -280,7 +296,7 @@ export const downloadMyStorageFile = createServerFn({ method: "POST" })
 export const adminGetStorageUsage = createServerFn({ method: "GET" }).handler(async (): Promise<StorageUsage> => {
   await requireAdmin();
   const result = await storageFetch<Record<string, unknown>>(`${STORAGE_PREFIX}/usage`);
-  return mapUsage(result, 0); // platform-wide total has no single plan quota to compare against
+  return mapUsage(result, 0, null); // platform-wide total has no single plan quota to compare against
 });
 
 export const adminListStorageFiles = createServerFn({ method: "GET" }).handler(async (): Promise<{ configured: boolean; files: StorageFile[] }> => {

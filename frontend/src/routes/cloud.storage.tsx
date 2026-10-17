@@ -1,9 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Upload, Trash2, RefreshCw, Download, Pin, PinOff, MoreVertical, File as FileIcon, Image as ImageIcon, Film, Music, FileText, Check, X, Search } from 'lucide-react';
+import { Upload, Trash2, RefreshCw, Download, Pin, PinOff, MoreVertical, File as FileIcon, Image as ImageIcon, Film, Music, FileText, Check, X, Search, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { getStorageStatus, listMyStorageFiles, deleteMyStorageFile, uploadMyStorageFile, downloadMyStorageFile, type StorageFile } from '@/lib/storage.functions';
+import { getStorageStatus, getMyStorageAccess, listMyStorageFiles, deleteMyStorageFile, uploadMyStorageFile, downloadMyStorageFile, type StorageFile } from '@/lib/storage.functions';
+import type { QuotaSummary } from '@/lib/storage-quota';
 import { dashboardHead } from '@/lib/dashboard-head';
 import { getBrandMetadata } from '@/lib/brand.functions';
 
@@ -89,6 +90,9 @@ function uploadWithProgress(file: File, onProgress: (percent: number) => void): 
 
 function Page() {
   const [online, setOnline] = useState(false);
+  // Plan, per-file limit and any block (ban/freeze/maintenance). null = not
+  // loaded or could not be verified; the server enforces either way.
+  const [access, setAccess] = useState<QuotaSummary | null>(null);
   const [files, setFiles] = useState<StorageFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploads, setUploads] = useState<UploadItem[]>([]);
@@ -115,9 +119,10 @@ function Page() {
 
   async function refresh() {
     setLoading(true);
-    const [statusResult, filesResult] = await Promise.all([getStorageStatus(), listMyStorageFiles()]);
+    const [statusResult, filesResult, accessResult] = await Promise.all([getStorageStatus(), listMyStorageFiles(), getMyStorageAccess()]);
     setOnline(Boolean(statusResult.configured && statusResult.online));
     setFiles(filesResult.files);
+    setAccess(accessResult);
     setLoading(false);
   }
 
@@ -129,6 +134,10 @@ function Page() {
     const picked = Array.from(event.target.files ?? []);
     event.target.value = '';
     if (!picked.length) return;
+    if (access?.blockMessage) {
+      toast('error', access.blockMessage);
+      return;
+    }
 
     const items: UploadItem[] = picked.map((file, i) => ({ id: Date.now() + i, name: file.name, percent: 0, status: 'uploading' }));
     setUploads(current => [...current, ...items]);
@@ -137,6 +146,14 @@ function Page() {
     for (let i = 0; i < picked.length; i++) {
       const file = picked[i];
       const itemId = items[i].id;
+      // Refuse an oversized file here, before sending gigabytes the server
+      // would only reject. The server enforces the same limit regardless.
+      if (access && file.size > access.maxUploadBytes) {
+        const message = `${file.name} is larger than your ${access.planLabel} plan allows (max ${formatBytes(access.maxUploadBytes)}).`;
+        setUploads(current => current.map(u => (u.id === itemId ? { ...u, status: 'error', error: message } : u)));
+        toast('error', message);
+        continue;
+      }
       try {
         const result = await uploadWithProgress(file, percent => {
           setUploads(current => current.map(u => (u.id === itemId ? { ...u, percent } : u)));
@@ -219,10 +236,17 @@ function Page() {
       <h1 className="font-display text-3xl font-normal sm:text-4xl">Storage</h1>
       <div className="flex gap-2">
         <Button variant="glass" onClick={refresh} disabled={loading} className="h-11 w-11 p-0" aria-label="Refresh"><RefreshCw className={loading ? 'animate-spin' : ''} /></Button>
-        <Button variant="crystal" onClick={() => fileInput.current?.click()} disabled={uploading} className="h-11 px-5 font-normal"><Upload />{uploading ? 'Uploading' : 'Upload'}</Button>
+        <Button variant="crystal" onClick={() => fileInput.current?.click()} disabled={uploading || Boolean(access?.blocked)} className="h-11 px-5 font-normal"><Upload />{uploading ? 'Uploading' : 'Upload'}</Button>
         <input ref={fileInput} type="file" multiple className="hidden" onChange={handleUpload} aria-label="Choose files to upload" />
       </div>
     </div>
+
+    {access?.blockMessage && <div role="status" className="dashboard-panel mt-5 flex items-start gap-3 px-4 py-3 text-sm">
+      <ShieldAlert size={16} className="mt-0.5 shrink-0 text-primary-glow" aria-hidden="true" />
+      <p className="min-w-0 flex-1">{access.blockMessage}</p>
+    </div>}
+
+    {access && !access.blockMessage && <p className="mt-3 text-xs text-muted-foreground">{access.planLabel} plan · up to {formatBytes(access.maxUploadBytes)} per file</p>}
 
     {uploads.length > 0 && <div className="mt-5 space-y-2">
       {uploads.map(item => (
