@@ -9,7 +9,7 @@ export const getIsAdmin = createServerFn({ method: "GET" }).handler(async (): Pr
   const adminEmail = (process.env.ADMIN_EMAIL ?? "").trim().toLowerCase();
   if (!adminEmail) return false;
   const user = await getSession();
-  if (!user?.email) return false;
+  if (!user?.email || !user.emailVerified) return false;
   return user.email.trim().toLowerCase() === adminEmail;
 });
 

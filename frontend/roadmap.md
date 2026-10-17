@@ -12,7 +12,7 @@
 
 ## Cloud admin build-out (one zip per step)
 - [x] Step 1 — Admin tree: /admin/cloud layout + 7 branch pages, shared guard/formatters, storage_settings + admin_action_log tables.
-- [ ] Step 2 — System settings (global limits, plan quotas, allowed types, storage maintenance mode).
+- [x] Step 2 — System settings (global max upload, plan quotas, extra-storage price, allowed file groups, storage maintenance mode). Pricing page and uploads now read them.
 - [ ] Step 3 — Quota engine (real per-user quota; freeze/cap/ban enforced on upload).
 - [ ] Step 3b — Large uploads: chunked, direct-to-storage (Vercel ~4.5 MB body cap and Cloudflare ~100 MB cap block 500 MB–4 GB uploads today).
 - [ ] Step 4 — Buckets.

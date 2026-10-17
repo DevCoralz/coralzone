@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link } from '@tanstack/react-router';
-import { RefreshCw, HardDrive, Activity, ShieldCheck, ArrowUpRight } from 'lucide-react';
+import { RefreshCw, HardDrive, Activity, ShieldCheck, ArrowUpRight, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AdminCloudHeader } from '@/components/admin-cloud-header';
 import { CLOUD_ADMIN_SECTIONS } from '@/lib/admin-cloud-sections';
 import { formatBytes, formatCount } from '@/lib/format';
 import { getStorageStatus, adminGetStorageUsage } from '@/lib/storage.functions';
+import { adminGetStorageSettings } from '@/lib/storage-settings.functions';
 
 type Status = Awaited<ReturnType<typeof getStorageStatus>>;
 type Usage = Awaited<ReturnType<typeof adminGetStorageUsage>>;
@@ -13,13 +14,15 @@ type Usage = Awaited<ReturnType<typeof adminGetStorageUsage>>;
 export function AdminCloudHub() {
   const [status, setStatus] = useState<Status | null>(null);
   const [usage, setUsage] = useState<Usage | null>(null);
+  const [maintenance, setMaintenance] = useState(false);
   const [loading, setLoading] = useState(true);
 
   async function refresh() {
     setLoading(true);
-    const [statusResult, usageResult] = await Promise.all([getStorageStatus(), adminGetStorageUsage()]);
+    const [statusResult, usageResult, settingsResult] = await Promise.all([getStorageStatus(), adminGetStorageUsage(), adminGetStorageSettings()]);
     setStatus(statusResult);
     setUsage(usageResult);
+    setMaintenance(settingsResult.ok && settingsResult.effective.maintenance.enabled);
     setLoading(false);
   }
 
@@ -34,6 +37,13 @@ export function AdminCloudHub() {
       description="Service health and platform-wide totals. Service keys stay on the server — users never see the storage URL."
       actions={<Button variant="glass" onClick={refresh} disabled={loading} className="h-10 font-normal"><RefreshCw className={loading ? 'animate-spin' : ''} />Refresh</Button>}
     />
+
+    {maintenance && (
+      <Link to="/admin/cloud/settings" role="status" className="mb-5 flex items-center gap-3 rounded-lg border border-primary-glow/50 px-4 py-3 text-sm">
+        <Wrench size={16} className="shrink-0 text-primary-glow" aria-hidden="true" />
+        <span>Storage maintenance mode is <strong className="font-normal text-primary-glow">ON</strong> — new uploads are blocked. Open settings to turn it off.</span>
+      </Link>
+    )}
 
     <div className="grid gap-3 sm:grid-cols-3 sm:gap-5">
       <div className="dashboard-panel p-5"><ShieldCheck size={18} className="text-primary-glow" /><p className="mt-4 text-xs text-muted-foreground">Service status</p><p className="mt-1 text-2xl font-normal">{loading ? '…' : connected ? 'Online' : status?.configured ? 'Unreachable' : 'Not configured'}</p></div>

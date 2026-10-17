@@ -31,6 +31,8 @@ import authLogout from "./_lib/handlers/auth-logout.js";
 import authMe from "./_lib/handlers/auth-me.js";
 import authGoogle from "./_lib/handlers/auth-google.js";
 import authGoogleCallback from "./_lib/handlers/auth-google-callback.js";
+import cloudSettings from "./_lib/handlers/cloud-settings.js";
+import adminCloudSettings from "./_lib/handlers/admin-cloud-settings.js";
 
 // Keyed by "<METHOD> /path" — each handler still checks req.method itself
 // too (defense in depth / unit-testability), this table just decides
@@ -49,6 +51,9 @@ const routes = {
   "GET /auth/me": authMe,
   "GET /auth/google": authGoogle,
   "GET /auth/google-callback": authGoogleCallback,
+  "GET /cloud/settings": cloudSettings,
+  "GET /admin/cloud-settings": adminCloudSettings,
+  "PUT /admin/cloud-settings": adminCloudSettings,
 };
 
 // Recognizable messages from our own config-validation checks (missing

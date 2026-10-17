@@ -31,5 +31,5 @@ export const CLOUD_ADMIN_SECTIONS: readonly CloudAdminSection[] = [
   { to: '/admin/cloud/files', label: 'Files & abuse', description: 'Browse all files, remove abuse, block file types.', icon: FileWarning, status: 'live', step: 7 },
   { to: '/admin/cloud/api-keys', label: 'API keys', description: 'Keys across all users: last used, revoke, rate-limit.', icon: KeyRound, status: 'planned', step: 6 },
   { to: '/admin/cloud/billing', label: 'Billing & extra storage', description: 'Extra-storage purchases, manual adjustments, failed payments.', icon: Receipt, status: 'planned', step: 8 },
-  { to: '/admin/cloud/settings', label: 'System settings', description: 'Global limits, plan quotas, file types, maintenance mode.', icon: Settings2, status: 'planned', step: 2 },
+  { to: '/admin/cloud/settings', label: 'System settings', description: 'Global limits, plan quotas, file types, maintenance mode.', icon: Settings2, status: 'live', step: 2 },
 ];

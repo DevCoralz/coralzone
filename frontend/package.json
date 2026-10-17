@@ -11,6 +11,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
+    "test:api": "node --test \"api/_lib/*.test.js\"",
     "test:watch": "vitest",
     "db:migrate": "node scripts/migrate.mjs"
   },

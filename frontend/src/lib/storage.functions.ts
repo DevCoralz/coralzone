@@ -27,7 +27,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getSession } from "./auth-session.functions";
 import { requireAdmin } from "./admin.functions";
-import { STORAGE_PLANS, DEFAULT_STORAGE_PLAN } from "./storage-plans";
+import { DEFAULT_STORAGE_PLAN } from "./storage-plans";
+import { effectivePlan, allowedMimeTypes, maintenanceMessage } from "./storage-settings";
+import { loadEffectiveSettings } from "./storage-settings.functions";
+import { formatBytes } from "./format";
 
 const STORAGE_PREFIX = "/api/v1/storage";
 
@@ -44,6 +47,9 @@ type StorageResult<T> = {
   ok: boolean;
   status: number;
   data: T | null;
+  // Short, service-authored reason for a 4xx rejection (e.g. "File type not
+  // allowed"). Never set for 5xx/network failures, which stay generic.
+  detail?: string;
 };
 
 async function storageFetch<T>(path: string, init?: RequestInit): Promise<StorageResult<T>> {
@@ -58,7 +64,18 @@ async function storageFetch<T>(path: string, init?: RequestInit): Promise<Storag
         ...(init?.headers ?? {}),
       },
     });
-    if (!response.ok) return { configured: true, ok: false, status: response.status, data: null };
+    if (!response.ok) {
+      let detail: string | undefined;
+      if (response.status >= 400 && response.status < 500) {
+        try {
+          const body = (await response.json()) as { detail?: unknown };
+          if (typeof body.detail === "string") detail = body.detail.slice(0, 200);
+        } catch {
+          /* no JSON body */
+        }
+      }
+      return { configured: true, ok: false, status: response.status, data: null, detail };
+    }
     const text = await response.text();
     let data: T | null = null;
     try {
@@ -137,9 +154,9 @@ async function requireSignedInUserId(): Promise<string> {
 
 export const getMyStorageUsage = createServerFn({ method: "GET" }).handler(async (): Promise<StorageUsage> => {
   const userId = await requireSignedInUserId();
-  // Quota comes from storage_quotas once billing (step 9) is live; until
-  // then everyone not yet on a paid plan is treated as Starter.
-  const quota = STORAGE_PLANS[DEFAULT_STORAGE_PLAN];
+  // Per-user plans arrive with the quota engine (build step 3); until then
+  // everyone is on the default plan, with its quota from the admin settings.
+  const quota = effectivePlan(DEFAULT_STORAGE_PLAN, await loadEffectiveSettings());
   const result = await storageFetch<Record<string, unknown>>(`${STORAGE_PREFIX}/usage?owner_id=${encodeURIComponent(userId)}`);
   return mapUsage(result, quota.bytesQuota);
 });
@@ -186,19 +203,33 @@ export const uploadMyStorageFile = createServerFn({ method: "POST" })
     const userId = await requireSignedInUserId();
     const file = data.get("file") as File;
 
-    // Enforce the plan's own per-file cap before spending an upload call on
-    // the storage service — it has its own hard ceiling too (see
-    // MAX_MEDIA_BYTES in coralz-storage), but that's a platform-wide safety
-    // net, not a plan check, so both are needed.
-    const quota = STORAGE_PLANS[DEFAULT_STORAGE_PLAN];
-    if (file.size > quota.maxUploadBytes) {
-      const maxMb = Math.round(quota.maxUploadBytes / (1024 * 1024));
-      return { configured: true, ok: false, id: "", error: `File too large for the ${quota.label} plan (max ${maxMb} MB). Upgrade for larger uploads.` };
+    // Admin-controlled gates first, in order: storage maintenance mode, then
+    // the effective per-file cap (plan cap, never above the global ceiling).
+    // The same cap and the allowed MIME list are ALSO sent to the storage
+    // service below, which re-checks them against the bytes it actually
+    // receives — so a tampered client can't dodge them.
+    const settings = await loadEffectiveSettings();
+    if (settings.maintenance.enabled) {
+      return { configured: true, ok: false, id: "", error: maintenanceMessage(settings) };
+    }
+    const plan = effectivePlan(DEFAULT_STORAGE_PLAN, settings);
+    if (file.size > plan.maxUploadBytes) {
+      const capped = settings.globalMaxUploadBytes < settings.planQuotas[plan.id].maxUploadBytes;
+      return {
+        configured: true,
+        ok: false,
+        id: "",
+        error: capped
+          ? `Uploads are limited to ${formatBytes(plan.maxUploadBytes)} per file right now.`
+          : `File too large for the ${plan.label} plan (max ${formatBytes(plan.maxUploadBytes)}). Upgrade for larger uploads.`,
+      };
     }
 
     const form = new FormData();
     form.set("file", file, file.name);
     form.set("owner_id", userId);
+    form.set("max_bytes", String(plan.maxUploadBytes));
+    form.set("allowed_mime", JSON.stringify(allowedMimeTypes(settings.allowedFileGroups)));
     const result = await storageFetch<Record<string, unknown>>(`${STORAGE_PREFIX}/media`, {
       method: "POST",
       body: form,
@@ -214,6 +245,7 @@ export const uploadMyStorageFile = createServerFn({ method: "POST" })
     } catch {
       id = "";
     }
+    if (!result.ok && !error) error = result.detail;
     return { configured: result.configured, ok: result.ok, id, error };
   });
 
