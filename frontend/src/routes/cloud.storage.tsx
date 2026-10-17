@@ -3,7 +3,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Upload, Trash2, RefreshCw, Download, Pin, PinOff, MoreVertical, File as FileIcon, Image as ImageIcon, Film, Music, FileText, Check, X, Search, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { getStorageStatus, getMyStorageAccess, listMyStorageFiles, deleteMyStorageFile, uploadMyStorageFile, downloadMyStorageFile, type StorageFile } from '@/lib/storage.functions';
+import { getStorageStatus, getMyStorageAccess, listMyStorageFiles, deleteMyStorageFile, startMyUpload, finishMyUpload, downloadMyStorageFile, type StorageFile } from '@/lib/storage.functions';
+import { runChunkedUpload, cancelUpload, UploadError, type UploadPhase } from '@/lib/chunked-upload';
 import type { QuotaSummary } from '@/lib/storage-quota';
 import { dashboardHead } from '@/lib/dashboard-head';
 import { getBrandMetadata } from '@/lib/brand.functions';
@@ -55,37 +56,36 @@ function iconFor(name: string, type: string) {
 }
 
 type Toast = { id: number; kind: 'success' | 'error'; text: string };
-type UploadItem = { id: number; name: string; percent: number; status: 'uploading' | 'done' | 'error'; error?: string };
+type UploadItem = { id: number; name: string; percent: number; phase: UploadPhase; status: 'uploading' | 'done' | 'error'; error?: string };
 
-// uploadMyStorageFile is a TanStack server fn; `.url` is the route TanStack
-// Start registers for it under the hood (see storage.functions.ts). Driving
-// XMLHttpRequest at that URL — instead of calling the function directly —
-// is what makes real upload-progress events possible; fetch() has none.
-function uploadWithProgress(file: File, onProgress: (percent: number) => void): Promise<{ configured: boolean; ok: boolean; id: string; error?: string }> {
-  return new Promise((resolve, reject) => {
-    const form = new FormData();
-    form.set('file', file, file.name);
-    const xhr = new XMLHttpRequest();
-    const url = `${(uploadMyStorageFile as unknown as { url: string }).url}?createServerFn`;
-    xhr.open('POST', url);
-    xhr.setRequestHeader('x-tsr-redirect', 'manual');
-    xhr.upload.onprogress = event => {
-      if (event.lengthComputable) onProgress(Math.round((event.loaded / event.total) * 100));
-    };
-    xhr.onload = () => {
-      if (xhr.status < 200 || xhr.status >= 300) {
-        reject(new Error(`upload failed (${xhr.status})`));
-        return;
-      }
-      try {
-        resolve(JSON.parse(xhr.responseText));
-      } catch {
-        reject(new Error('bad response'));
-      }
-    };
-    xhr.onerror = () => reject(new Error('network error'));
-    xhr.send(form);
-  });
+// Big files cannot pass through our own server (Vercel caps request bodies at
+// about 4.5 MB), so: ask the server for an upload session, send the chunks
+// straight to the storage service, then ask the server to finish. The server
+// checks the user's plan, ban and free space at the start and again at the end.
+async function uploadFile(
+  file: File,
+  onProgress: (percent: number, phase: UploadPhase) => void,
+  signal: AbortSignal,
+): Promise<{ configured: boolean; ok: boolean; id: string; error?: string }> {
+  const started = await startMyUpload({ data: { name: file.name, size: file.size } });
+  if (!started.ok || !started.session) {
+    return { configured: started.configured, ok: false, id: '', error: started.error };
+  }
+  const session = started.session;
+  try {
+    const stored = await runChunkedUpload({
+      file,
+      session,
+      signal,
+      onProgress: ({ percent, phase }) => onProgress(percent, phase),
+      finish: () => finishMyUpload({ data: session.id }),
+    });
+    return { configured: true, ok: true, id: stored.id };
+  } catch (error) {
+    // Cancelled or failed: free the half sent file on the server straight away.
+    if (!(error instanceof UploadError && error.message === 'This upload expired. Please start it again.')) void cancelUpload(session);
+    return { configured: true, ok: false, id: '', error: error instanceof UploadError ? error.message : 'Upload failed' };
+  }
 }
 
 function Page() {
@@ -103,6 +103,8 @@ function Page() {
   const [pins, setPins] = useState<string[]>([]);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const fileInput = useRef<HTMLInputElement>(null);
+  // One controller per running upload, so the cancel button can stop just that one.
+  const controllers = useRef(new Map<number, AbortController>());
 
   useEffect(() => {
     setNames(readJson<Record<string, string>>(NAMES_KEY, {}));
@@ -128,6 +130,14 @@ function Page() {
 
   useEffect(() => { refresh(); }, []);
 
+  // Closing the tab mid upload loses the file, so ask the browser to confirm.
+  useEffect(() => {
+    if (!uploading) return;
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [uploading]);
+
   const displayName = (file: StorageFile) => file.name || names[file.key] || file.key;
 
   async function handleUpload(event: React.ChangeEvent<HTMLInputElement>) {
@@ -139,7 +149,7 @@ function Page() {
       return;
     }
 
-    const items: UploadItem[] = picked.map((file, i) => ({ id: Date.now() + i, name: file.name, percent: 0, status: 'uploading' }));
+    const items: UploadItem[] = picked.map((file, i) => ({ id: Date.now() + i, name: file.name, percent: 0, phase: 'uploading', status: 'uploading' }));
     setUploads(current => [...current, ...items]);
 
     const saved = { ...names };
@@ -154,14 +164,19 @@ function Page() {
         toast('error', message);
         continue;
       }
+      const controller = new AbortController();
+      controllers.current.set(itemId, controller);
       try {
-        const result = await uploadWithProgress(file, percent => {
-          setUploads(current => current.map(u => (u.id === itemId ? { ...u, percent } : u)));
-        });
+        const result = await uploadFile(file, (percent, phase) => {
+          setUploads(current => current.map(u => (u.id === itemId ? { ...u, percent, phase } : u)));
+        }, controller.signal);
         if (result.ok) {
           if (result.id) saved[result.id] = file.name;
           setUploads(current => current.map(u => (u.id === itemId ? { ...u, percent: 100, status: 'done' } : u)));
           toast('success', `${file.name} uploaded`);
+        } else if (controller.signal.aborted) {
+          setUploads(current => current.filter(u => u.id !== itemId));
+          toast('success', `Cancelled ${file.name}`);
         } else {
           const message = result.error || (result.configured ? `Could not upload ${file.name}` : 'Storage is offline');
           setUploads(current => current.map(u => (u.id === itemId ? { ...u, status: 'error', error: message } : u)));
@@ -170,6 +185,8 @@ function Page() {
       } catch {
         setUploads(current => current.map(u => (u.id === itemId ? { ...u, status: 'error', error: 'Upload failed' } : u)));
         toast('error', `Upload failed for ${file.name}`);
+      } finally {
+        controllers.current.delete(itemId);
       }
     }
     setNames(saved);
@@ -257,7 +274,7 @@ function Page() {
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-2 text-sm">
               <span className="truncate">{item.name}</span>
-              <span className="shrink-0 text-xs text-muted-foreground">{item.status === 'error' ? 'Failed' : `${item.percent}%`}</span>
+              <span className="shrink-0 text-xs text-muted-foreground">{item.status === 'error' ? 'Failed' : item.status === 'uploading' && item.phase === 'processing' ? 'Finishing' : `${item.percent}%`}</span>
             </div>
             <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-glass-border">
               <div
@@ -267,6 +284,9 @@ function Page() {
             </div>
             {item.status === 'error' && item.error && <p className="mt-1 text-xs text-destructive">{item.error}</p>}
           </div>
+          {item.status === 'uploading' && item.phase === 'uploading' && (
+            <button type="button" onClick={() => controllers.current.get(item.id)?.abort()} aria-label={`Cancel ${item.name}`} className="shrink-0 opacity-70 hover:opacity-100"><X size={14} /></button>
+          )}
         </div>
       ))}
     </div>}

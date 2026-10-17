@@ -9,8 +9,15 @@
 //   GET    /api/v1/storage/files           — X-Service-Key, ?limit&offset&owner_id&bucket_id
 //   GET    /api/v1/storage/usage           — X-Service-Key, ?owner_id
 //   POST   /api/v1/storage/media           — X-Service-Key, multipart (file, owner_id, allow_video, bucket_id)
+//   POST   /api/v1/storage/uploads         — X-Service-Key, JSON: opens a chunked upload (big files)
+//   POST   /api/v1/storage/uploads/{id}/complete — X-Service-Key, JSON (owner_id): starts processing
+//   DELETE /api/v1/storage/uploads/{id}     — X-Service-Key + ?owner_id=, cancels a session
+//   (chunks and status go browser to storage with a one time token, see chunked-upload.ts)
 //   DELETE /api/v1/storage/media/{id}      — X-Service-Key, multipart/form (owner_id)
 //   GET    /api/v1/storage/media/{id}      — public, anonymous download
+//
+// STORAGE_PUBLIC_URL (optional) is the address browsers use to reach the storage
+// service for chunked uploads. It defaults to STORAGE_SERVICE_URL. It must be https.
 //
 // STORAGE_SERVICE_URL is the tunnel host with NO /api/v1/storage suffix
 // (e.g. https://storage.example.workers.dev) — this module appends the
@@ -35,6 +42,15 @@ const STORAGE_PREFIX = "/api/v1/storage";
 
 function storageBase(): string {
   return (process.env.STORAGE_SERVICE_URL ?? "").trim().replace(/\/+$/, "");
+}
+
+// Where the browser sends upload chunks. Only https is accepted (or localhost
+// for development), because the one time upload token travels in a header.
+function storagePublicBase(): string {
+  const explicit = (process.env.STORAGE_PUBLIC_URL ?? "").trim().replace(/\/+$/, "");
+  const base = explicit || storageBase();
+  if (/^https:\/\//i.test(base) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(base)) return base;
+  return "";
 }
 
 function storageKey(): string {
@@ -202,63 +218,92 @@ export const deleteMyStorageFile = createServerFn({ method: "POST" })
     return { configured: result.configured, ok: result.ok };
   });
 
-// Takes the browser's FormData directly (field "file") instead of a
-// base64-encoded JSON payload — smaller over the wire (~33% less data) and
-// lets the client drive real upload progress via XMLHttpRequest against
-// this function's own URL, since fetch() has no upload progress event.
-export const uploadMyStorageFile = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => {
-    if (!(input instanceof FormData)) throw new Error("Expected form data");
-    const file = input.get("file");
-    if (!(file instanceof File) || !file.size) throw new Error("A file is required");
-    return input;
-  })
-  .handler(async ({ data }): Promise<{ configured: boolean; ok: boolean; id: string; error?: string }> => {
-    const userId = await requireSignedInUserId();
-    const file = data.get("file") as File;
+// Uploads no longer pass through this server: Vercel refuses bodies over about
+// 4.5 MB. Instead the browser asks startMyUpload for a session, sends the file
+// to the storage service in chunks (chunked-upload.ts) and calls finishMyUpload.
+// Both functions run the quota engine, so a ban or freeze cannot be skipped.
+export interface MyUploadSession {
+  id: string;
+  token: string;
+  chunkSize: number;
+  endpoint: string;
+}
 
-    // The quota engine decides, in order: maintenance mode, banned, frozen,
-    // per-file limit (plan or manual override, never above the global max),
-    // then free space. Fails CLOSED if the plan can't be verified. The same
-    // limits are ALSO sent to the storage service below, which re-checks them
-    // against the bytes it actually receives, so a tampered client can't
-    // dodge them.
+export const startMyUpload = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => {
+    if (!input || typeof input !== "object") throw new Error("A file name and size are required");
+    const { name, size } = input as { name?: unknown; size?: unknown };
+    if (typeof name !== "string" || !name.trim() || name.length > 255) throw new Error("A valid file name is required");
+    if (typeof size !== "number" || !Number.isSafeInteger(size) || size < 1) throw new Error("A valid file size is required");
+    return { name: name.trim(), size };
+  })
+  .handler(async ({ data }): Promise<{ configured: boolean; ok: boolean; session?: MyUploadSession; error?: string }> => {
+    const userId = await requireSignedInUserId();
+
+    // Order of checks: maintenance, banned, frozen, per file limit, free space.
+    // Fails CLOSED if the plan can't be verified.
     const context = await loadMyQuota();
-    if (!context) return { configured: true, ok: false, id: "", error: QUOTA_UNAVAILABLE };
+    if (!context) return { configured: true, ok: false, error: QUOTA_UNAVAILABLE };
     const { settings, quota } = context;
-    if (quota.blockMessage) return { configured: true, ok: false, id: "", error: quota.blockMessage };
+    if (quota.blockMessage) return { configured: true, ok: false, error: quota.blockMessage };
+
+    if (!storageBase()) return { configured: false, ok: false };
+    const publicBase = storagePublicBase();
+    if (!publicBase) return { configured: true, ok: false, error: "Uploads are not available right now. Please contact support." };
 
     const usage = await storageFetch<Record<string, unknown>>(`${STORAGE_PREFIX}/usage?owner_id=${encodeURIComponent(userId)}`);
-    if (!usage.configured) return { configured: false, ok: false, id: "", error: undefined };
-    if (!usage.ok) return { configured: true, ok: false, id: "", error: "We could not check your free storage space. Please try again." };
+    if (!usage.ok) return { configured: true, ok: false, error: "We could not check your free storage space. Please try again." };
     const bytesUsed = Number((usage.data as Record<string, unknown> | null)?.bytesUsed ?? 0);
+    const decision = checkUpload(quota, settings, data.size, Number.isFinite(bytesUsed) ? bytesUsed : 0);
+    if (!decision.ok) return { configured: true, ok: false, error: decision.error };
 
-    const decision = checkUpload(quota, settings, file.size, Number.isFinite(bytesUsed) ? bytesUsed : 0);
-    if (!decision.ok) return { configured: true, ok: false, id: "", error: decision.error };
-
-    const form = new FormData();
-    form.set("file", file, file.name);
-    form.set("owner_id", userId);
-    form.set("max_bytes", String(quota.maxUploadBytes));
-    form.set("quota_bytes", String(quota.bytesQuota));
-    form.set("allowed_mime", JSON.stringify(allowedMimeTypes(settings.allowedFileGroups)));
-    const result = await storageFetch<Record<string, unknown>>(`${STORAGE_PREFIX}/media`, {
+    // The storage service checks the same limits again, and also counts the
+    // uploads this user already has open, so two at once cannot overfill the quota.
+    const result = await storageFetch<Record<string, unknown>>(`${STORAGE_PREFIX}/uploads`, {
       method: "POST",
-      body: form,
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        owner_id: userId,
+        filename: data.name,
+        size: data.size,
+        max_bytes: quota.maxUploadBytes,
+        quota_bytes: quota.bytesQuota,
+        allowed_mime: allowedMimeTypes(settings.allowedFileGroups),
+      }),
     });
-    let id = "";
-    let error: string | undefined;
-    try {
-      const asRecord = (value: unknown): Record<string, unknown> => (value && typeof value === "object" ? (value as Record<string, unknown>) : {});
-      const body = asRecord(result.data);
-      const nested = asRecord(body.file);
-      id = String(body.id ?? body.key ?? body.media_id ?? nested.id ?? nested.key ?? "");
-      if (typeof body.detail === "string") error = body.detail;
-    } catch {
-      id = "";
+    const body = result.data && typeof result.data === "object" ? result.data : {};
+    const { id, token, chunkSize } = body as { id?: unknown; token?: unknown; chunkSize?: unknown };
+    if (!result.ok || typeof id !== "string" || typeof token !== "string" || typeof chunkSize !== "number") {
+      return { configured: result.configured, ok: false, error: result.detail ?? "We could not start the upload. Please try again." };
     }
-    if (!result.ok && !error) error = result.detail;
-    return { configured: result.configured, ok: result.ok, id, error };
+    return { configured: true, ok: true, session: { id, token, chunkSize, endpoint: `${publicBase}${STORAGE_PREFIX}/uploads/${encodeURIComponent(id)}` } };
+  });
+
+export const finishMyUpload = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => {
+    if (typeof input !== "string" || !/^[0-9a-f-]{36}$/.test(input.trim())) throw new Error("An upload id is required");
+    return input.trim();
+  })
+  .handler(async ({ data }): Promise<{ ok: boolean; error?: string; retry?: boolean }> => {
+    const userId = await requireSignedInUserId();
+
+    // Check again: the user may have been banned or frozen, or maintenance
+    // switched on, while a long upload was running. Nothing gets stored then.
+    const context = await loadMyQuota();
+    if (!context) return { ok: false, retry: true, error: QUOTA_UNAVAILABLE };
+    if (context.quota.blockMessage) {
+      await storageFetch<unknown>(`${STORAGE_PREFIX}/uploads/${data}?owner_id=${encodeURIComponent(userId)}`, { method: "DELETE" });
+      return { ok: false, error: context.quota.blockMessage };
+    }
+
+    const result = await storageFetch<unknown>(`${STORAGE_PREFIX}/uploads/${data}/complete`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ owner_id: userId }),
+    });
+    if (result.ok) return { ok: true };
+    // A 5xx or a dropped connection is worth another go; a 4xx is final.
+    return { ok: false, retry: result.status === 0 || result.status >= 500, error: result.detail ?? "We could not finish the upload. Please try again." };
   });
 
 export const downloadMyStorageFile = createServerFn({ method: "POST" })

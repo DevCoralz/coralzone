@@ -60,3 +60,22 @@ npm run dev
 - TypeScript
 - React
 - Tailwind CSS
+
+
+## Large uploads (chunked, direct to the storage service)
+
+Vercel rejects request bodies over about 4.5 MB, so files are not sent through
+this app. The flow on `/cloud/storage`:
+
+1. `startMyUpload` (server function) runs the quota engine and opens a session on
+   the storage service with the service key. The browser gets a one time token.
+2. The browser sends 8 MB chunks to the storage service (`src/lib/chunked-upload.ts`),
+   each with a SHA-256 so damage in transit is caught. A dropped connection resumes
+   where it stopped.
+3. `finishMyUpload` checks the user again (ban, freeze, maintenance), then tells the
+   storage service to finish. Processing and the Telegram upload happen there in the
+   background and the page waits for the result.
+
+Set `STORAGE_PUBLIC_URL` if browsers reach the storage service on a different
+address than the server does, and list your site in the storage service's
+`CORS_ORIGINS`. See `coralz-storage/.env.example` for the upload settings.
