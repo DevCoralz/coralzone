@@ -139,41 +139,38 @@ export const deleteStorageFile = createServerFn({ method: "POST" })
     return { configured: result.configured, ok: result.ok };
   });
 
+// Takes the browser's FormData directly (field "file") instead of a
+// base64-encoded JSON payload — smaller over the wire (~33% less data) and
+// lets the client drive real upload progress via XMLHttpRequest against
+// this function's own URL, since fetch() has no upload progress event.
 export const uploadStorageFile = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => {
-    const value = (input ?? {}) as { name?: unknown; contentType?: unknown; dataBase64?: unknown };
-    if (typeof value.name !== "string" || !value.name.trim() || typeof value.dataBase64 !== "string") {
-      throw new Error("A file name and contents are required");
-    }
-    return {
-      name: value.name.trim(),
-      contentType: typeof value.contentType === "string" ? value.contentType : "application/octet-stream",
-      dataBase64: value.dataBase64,
-    };
+    if (!(input instanceof FormData)) throw new Error("Expected form data");
+    const file = input.get("file");
+    if (!(file instanceof File) || !file.size) throw new Error("A file is required");
+    return input;
   })
-  .handler(async ({ data }): Promise<{ configured: boolean; ok: boolean; id: string }> => {
-    // The service's /media upload takes multipart file + owner_id (Form),
-    // not JSON — decode the base64 the browser sent us back into bytes and
-    // repack as multipart here, server-side, so the browser payload shape
-    // doesn't have to change.
-    const bytes = Buffer.from(data.dataBase64, "base64");
+  .handler(async ({ data }): Promise<{ configured: boolean; ok: boolean; id: string; error?: string }> => {
+    const file = data.get("file") as File;
     const form = new FormData();
-    form.set("file", new Blob([bytes], { type: data.contentType }), data.name);
+    form.set("file", file, file.name);
     form.set("owner_id", DEFAULT_OWNER_ID);
     const result = await storageFetch<Record<string, unknown>>(`${STORAGE_PREFIX}/media`, {
       method: "POST",
       body: form,
     });
     let id = "";
+    let error: string | undefined;
     try {
       const asRecord = (value: unknown): Record<string, unknown> => (value && typeof value === "object" ? (value as Record<string, unknown>) : {});
       const body = asRecord(result.data);
       const nested = asRecord(body.file);
       id = String(body.id ?? body.key ?? body.media_id ?? nested.id ?? nested.key ?? "");
+      if (typeof body.detail === "string") error = body.detail;
     } catch {
       id = "";
     }
-    return { configured: result.configured, ok: result.ok, id };
+    return { configured: result.configured, ok: result.ok, id, error };
   });
 
 export const downloadStorageFile = createServerFn({ method: "POST" })

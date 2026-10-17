@@ -54,12 +54,45 @@ function iconFor(name: string, type: string) {
 }
 
 type Toast = { id: number; kind: 'success' | 'error'; text: string };
+type UploadItem = { id: number; name: string; percent: number; status: 'uploading' | 'done' | 'error'; error?: string };
+
+// uploadStorageFile is a TanStack server fn; `.url` is the route TanStack
+// Start registers for it under the hood (see storage.functions.ts). Driving
+// XMLHttpRequest at that URL — instead of calling the function directly —
+// is what makes real upload-progress events possible; fetch() has none.
+function uploadWithProgress(file: File, onProgress: (percent: number) => void): Promise<{ configured: boolean; ok: boolean; id: string; error?: string }> {
+  return new Promise((resolve, reject) => {
+    const form = new FormData();
+    form.set('file', file, file.name);
+    const xhr = new XMLHttpRequest();
+    const url = `${(uploadStorageFile as unknown as { url: string }).url}?createServerFn`;
+    xhr.open('POST', url);
+    xhr.setRequestHeader('x-tsr-redirect', 'manual');
+    xhr.upload.onprogress = event => {
+      if (event.lengthComputable) onProgress(Math.round((event.loaded / event.total) * 100));
+    };
+    xhr.onload = () => {
+      if (xhr.status < 200 || xhr.status >= 300) {
+        reject(new Error(`upload failed (${xhr.status})`));
+        return;
+      }
+      try {
+        resolve(JSON.parse(xhr.responseText));
+      } catch {
+        reject(new Error('bad response'));
+      }
+    };
+    xhr.onerror = () => reject(new Error('network error'));
+    xhr.send(form);
+  });
+}
 
 function Page() {
   const [online, setOnline] = useState(false);
   const [files, setFiles] = useState<StorageFile[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
+  const [uploads, setUploads] = useState<UploadItem[]>([]);
+  const uploading = uploads.some(item => item.status === 'uploading');
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [names, setNames] = useState<Record<string, string>>({});
@@ -96,36 +129,39 @@ function Page() {
     const picked = Array.from(event.target.files ?? []);
     event.target.value = '';
     if (!picked.length) return;
-    setUploading(true);
+
+    const items: UploadItem[] = picked.map((file, i) => ({ id: Date.now() + i, name: file.name, percent: 0, status: 'uploading' }));
+    setUploads(current => [...current, ...items]);
+
     const saved = { ...names };
-    for (const file of picked) {
-      let dataBase64 = '';
+    for (let i = 0; i < picked.length; i++) {
+      const file = picked[i];
+      const itemId = items[i].id;
       try {
-        dataBase64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '');
-          reader.onerror = () => reject(new Error('read failed'));
-          reader.readAsDataURL(file);
+        const result = await uploadWithProgress(file, percent => {
+          setUploads(current => current.map(u => (u.id === itemId ? { ...u, percent } : u)));
         });
-      } catch {
-        toast('error', `Could not read ${file.name}`);
-        continue;
-      }
-      try {
-        const result = await uploadStorageFile({ data: { name: file.name, contentType: file.type || 'application/octet-stream', dataBase64 } });
         if (result.ok) {
           if (result.id) saved[result.id] = file.name;
+          setUploads(current => current.map(u => (u.id === itemId ? { ...u, percent: 100, status: 'done' } : u)));
           toast('success', `${file.name} uploaded`);
         } else {
-          toast('error', result.configured ? `Could not upload ${file.name}` : 'Storage is offline');
+          const message = result.error || (result.configured ? `Could not upload ${file.name}` : 'Storage is offline');
+          setUploads(current => current.map(u => (u.id === itemId ? { ...u, status: 'error', error: message } : u)));
+          toast('error', message);
         }
       } catch {
+        setUploads(current => current.map(u => (u.id === itemId ? { ...u, status: 'error', error: 'Upload failed' } : u)));
         toast('error', `Upload failed for ${file.name}`);
       }
     }
     setNames(saved);
     writeJson(NAMES_KEY, saved);
-    setUploading(false);
+    // Clear finished entries after a beat so success/error states are visible
+    // before they disappear, rather than vanishing the instant a file lands.
+    setTimeout(() => {
+      setUploads(current => current.filter(u => u.status === 'uploading'));
+    }, 2500);
     await refresh();
   }
 
@@ -187,6 +223,29 @@ function Page() {
         <input ref={fileInput} type="file" multiple className="hidden" onChange={handleUpload} aria-label="Choose files to upload" />
       </div>
     </div>
+
+    {uploads.length > 0 && <div className="mt-5 space-y-2">
+      {uploads.map(item => (
+        <div key={item.id} className="dashboard-panel flex items-center gap-3 px-4 py-3">
+          <span className="dashboard-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
+            {item.status === 'error' ? <X size={14} /> : item.status === 'done' ? <Check size={14} /> : <Upload size={14} />}
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-2 text-sm">
+              <span className="truncate">{item.name}</span>
+              <span className="shrink-0 text-xs text-muted-foreground">{item.status === 'error' ? 'Failed' : `${item.percent}%`}</span>
+            </div>
+            <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-glass-border">
+              <div
+                className={`h-full rounded-full transition-all ${item.status === 'error' ? 'bg-destructive' : 'bg-primary-glow'}`}
+                style={{ width: `${item.status === 'error' ? 100 : item.percent}%` }}
+              />
+            </div>
+            {item.status === 'error' && item.error && <p className="mt-1 text-xs text-destructive">{item.error}</p>}
+          </div>
+        </div>
+      ))}
+    </div>}
 
     {files.length > 4 && <div className="relative mt-5">
       <Search size={15} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
