@@ -1,11 +1,16 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, notFound } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { RefreshCw, Trash2, HardDrive, Activity, ShieldCheck } from 'lucide-react';
+import { getIsAdmin } from '@/lib/admin.functions';
 import { AdminShell } from '@/components/admin-shell';
 import { Button } from '@/components/ui/button';
-import { getStorageStatus, getStorageUsage, listStorageFiles, deleteStorageFile, type StorageFile } from '@/lib/storage.functions';
+import { getStorageStatus, adminGetStorageUsage, adminListStorageFiles, adminDeleteStorageFile, type StorageFile } from '@/lib/storage.functions';
 
 export const Route = createFileRoute('/admin/cloud')({
+  beforeLoad: async () => {
+    const isAdmin = await getIsAdmin();
+    if (!isAdmin) throw notFound();
+  },
   head: () => ({
     meta: [
       { title: 'Cloud storage — CoralzOne Admin' },
@@ -33,10 +38,11 @@ function AdminCloud() {
   const [files, setFiles] = useState<StorageFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   async function refresh() {
     setLoading(true);
-    const [statusResult, usageResult, filesResult] = await Promise.all([getStorageStatus(), getStorageUsage(), listStorageFiles()]);
+    const [statusResult, usageResult, filesResult] = await Promise.all([getStorageStatus(), adminGetStorageUsage(), adminListStorageFiles()]);
     setStatus(statusResult);
     setUsage(usageResult);
     setFiles(filesResult.files);
@@ -45,10 +51,16 @@ function AdminCloud() {
 
   useEffect(() => { refresh(); }, []);
 
-  async function handleDelete(key: string) {
-    setBusyKey(key);
-    await deleteStorageFile({ data: key });
+  async function handleDelete(file: StorageFile) {
+    if (!file.ownerId) {
+      setError(`${file.key} has no recorded owner — delete it from the storage service directly.`);
+      return;
+    }
+    setError(null);
+    setBusyKey(file.key);
+    const result = await adminDeleteStorageFile({ data: { key: file.key, ownerId: file.ownerId } });
     setBusyKey(null);
+    if (!result.ok) setError(`Could not delete ${file.key}.`);
     await refresh();
   }
 
@@ -59,6 +71,8 @@ function AdminCloud() {
       <p className="text-sm text-muted-foreground">Service keys stay on the server — users never see the storage URL.</p>
       <Button variant="glass" onClick={refresh} disabled={loading} className="h-10 font-normal"><RefreshCw className={loading ? 'animate-spin' : ''} />Refresh</Button>
     </div>
+
+    {error && <p className="mt-4 rounded-lg border border-destructive/40 bg-destructive/15 px-4 py-2 text-xs text-destructive">{error}</p>}
 
     <div className="mt-6 grid gap-3 sm:grid-cols-3 sm:gap-5">
       <div className="dashboard-panel p-5"><ShieldCheck size={18} className="text-primary-glow" /><p className="mt-4 text-xs text-muted-foreground">Service status</p><p className="mt-1 text-2xl font-normal">{connected ? 'Online' : status?.configured ? 'Unreachable' : 'Not configured'}</p></div>
@@ -84,8 +98,8 @@ function AdminCloud() {
         : <div className="divide-y divide-glass-border">
           {files.map(file => (
             <div key={file.key} className="admin-row flex items-center gap-4 p-4 sm:px-6">
-              <div className="min-w-0"><p className="truncate text-sm">{file.key}</p><p className="mt-1 text-xs text-muted-foreground">{formatBytes(file.size)}{file.updatedAt ? ` · ${file.updatedAt}` : ''}</p></div>
-              <Button variant="ghost" size="icon" className="ml-auto h-9 w-9 shrink-0 rounded-lg text-destructive" aria-label={`Delete ${file.key}`} onClick={() => handleDelete(file.key)} disabled={busyKey === file.key}><Trash2 size={15} /></Button>
+              <div className="min-w-0"><p className="truncate text-sm">{file.key}</p><p className="mt-1 text-xs text-muted-foreground">{formatBytes(file.size)}{file.updatedAt ? ` · ${file.updatedAt}` : ''}{file.ownerId ? ` · owner ${file.ownerId.slice(0, 8)}` : ' · no owner on record'}</p></div>
+              <Button variant="ghost" size="icon" className="ml-auto h-9 w-9 shrink-0 rounded-lg text-destructive" aria-label={`Delete ${file.key}`} onClick={() => handleDelete(file)} disabled={busyKey === file.key}><Trash2 size={15} /></Button>
             </div>
           ))}
         </div>}

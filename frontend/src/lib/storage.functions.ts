@@ -6,25 +6,30 @@
 //
 // Contract (see coralz-storage/app/api/storage/media.py):
 //   GET    /health                        — liveness, no auth
-//   GET    /api/v1/storage/files           — X-Service-Key, ?limit&offset
-//   GET    /api/v1/storage/usage           — X-Service-Key
-//   POST   /api/v1/storage/media           — X-Service-Key, multipart (file, owner_id, allow_video)
+//   GET    /api/v1/storage/files           — X-Service-Key, ?limit&offset&owner_id&bucket_id
+//   GET    /api/v1/storage/usage           — X-Service-Key, ?owner_id
+//   POST   /api/v1/storage/media           — X-Service-Key, multipart (file, owner_id, allow_video, bucket_id)
 //   DELETE /api/v1/storage/media/{id}      — X-Service-Key, multipart/form (owner_id)
 //   GET    /api/v1/storage/media/{id}      — public, anonymous download
 //
 // STORAGE_SERVICE_URL is the tunnel host with NO /api/v1/storage suffix
 // (e.g. https://storage.example.workers.dev) — this module appends the
 // prefix itself so health checks can still hit plain /health.
+//
+// Ownership: every call in this file either (a) is scoped to the signed-in
+// user via getSession() and rejects if nobody is signed in — the "my..."
+// functions, used by /cloud/* pages — or (b) re-checks getIsAdmin() itself,
+// not just trusting that the calling route's own beforeLoad already gated
+// it, because a server function has its own HTTP endpoint that can be
+// called directly regardless of which page rendered the button — the
+// "admin..." functions, used only by /admin/cloud. Never trust a client-
+// supplied owner id for anything that writes or deletes.
 import { createServerFn } from "@tanstack/react-start";
+import { getSession } from "./auth-session.functions";
+import { getIsAdmin } from "./admin.functions";
+import { STORAGE_PLANS, DEFAULT_STORAGE_PLAN } from "./storage-plans";
 
 const STORAGE_PREFIX = "/api/v1/storage";
-
-// Files have no per-user owner in CoralzOne's current auth model — every
-// upload/delete through this admin-facing page is tagged with one fixed
-// owner_id so the service's delete-time owner check still applies. If
-// per-user attribution is added later, pass the real user id through here
-// instead.
-const DEFAULT_OWNER_ID = "coralzone-admin";
 
 function storageBase(): string {
   return (process.env.STORAGE_SERVICE_URL ?? "").trim().replace(/\/+$/, "");
@@ -73,31 +78,33 @@ export interface StorageFile {
   size: number;
   updatedAt: string;
   contentType: string;
+  ownerId: string | null;
+  bucketId: string | null;
 }
 
+function mapFileRow(row: Record<string, unknown>): StorageFile {
+  const key = String(row.key ?? row.id ?? "file");
+  const original = [row.name, row.filename, row.file_name, row.original_name, row.original_filename, row.originalName, row.title]
+    .find(value => typeof value === "string" && value.trim());
+  return {
+    key,
+    name: typeof original === "string" ? original.trim() : "",
+    size: Number(row.size ?? 0),
+    updatedAt: String(row.updatedAt ?? row.updated_at ?? row.created_at ?? ""),
+    contentType: String(row.contentType ?? row.content_type ?? row.mime_type ?? ""),
+    ownerId: row.ownerId != null ? String(row.ownerId) : row.owner_id != null ? String(row.owner_id) : null,
+    bucketId: row.bucketId != null ? String(row.bucketId) : row.bucket_id != null ? String(row.bucket_id) : null,
+  };
+}
+
+// Shared, unauthenticated: a liveness flag carries no per-user data, and
+// every /cloud and /admin/cloud page needs it to know whether to even try.
 export const getStorageStatus = createServerFn({ method: "GET" }).handler(async (): Promise<{ configured: boolean; online: boolean; detail: string }> => {
   if (!storageBase()) return { configured: false, online: false, detail: "not_configured" };
   // /health is a plain liveness check on the service root, unauthenticated —
   // deliberately NOT under STORAGE_PREFIX.
   const result = await storageFetch<unknown>("/health");
   return { configured: true, online: result.ok, detail: result.ok ? "online" : `unreachable_${result.status || "network"}` };
-});
-
-export const listStorageFiles = createServerFn({ method: "GET" }).handler(async (): Promise<{ configured: boolean; files: StorageFile[] }> => {
-  const result = await storageFetch<{ files: Array<Record<string, unknown>> }>(`${STORAGE_PREFIX}/files?limit=50`);
-  const rows = (result.data?.files ?? []).map(row => {
-    const key = String(row.key ?? row.id ?? "file");
-    const original = [row.name, row.filename, row.file_name, row.original_name, row.original_filename, row.originalName, row.title]
-      .find(value => typeof value === "string" && value.trim());
-    return {
-      key,
-      name: typeof original === "string" ? original.trim() : "",
-      size: Number(row.size ?? 0),
-      updatedAt: String(row.updatedAt ?? row.updated_at ?? row.created_at ?? ""),
-      contentType: String(row.contentType ?? row.content_type ?? row.mime_type ?? ""),
-    };
-  });
-  return { configured: result.configured && result.ok, files: rows };
 });
 
 export interface StorageUsage {
@@ -108,30 +115,55 @@ export interface StorageUsage {
   daily: Array<{ date: string; requests: number }>;
 }
 
-export const getStorageUsage = createServerFn({ method: "GET" }).handler(async (): Promise<StorageUsage> => {
-  const result = await storageFetch<Record<string, unknown>>(`${STORAGE_PREFIX}/usage`);
+function mapUsage(result: StorageResult<Record<string, unknown>>, bytesQuota: number): StorageUsage {
   const data = (result.data && typeof result.data === "object" ? result.data : {}) as Record<string, unknown>;
   const bytesUsed = Number(data.bytesUsed ?? 0);
-  const bytesQuota = Number(data.bytesQuota ?? 0);
   const requests = Number(data.requests ?? 0);
   const rawDaily = [data.daily, data.history, data.series, data.days].find(Array.isArray) as Array<Record<string, unknown>> | undefined;
   const daily = (rawDaily ?? [])
     .map(row => ({ date: String(row.date ?? row.day ?? row.label ?? "").slice(0, 10), requests: Number(row.requests ?? row.count ?? row.total ?? 0) }))
     .filter(row => row.date);
   return { configured: result.configured && result.ok, bytesUsed, bytesQuota, requests, daily };
+}
+
+// --- User-scoped: every /cloud/* page. Never accept an owner id as input —
+// it always comes from the verified session, never the client. -----------
+
+async function requireSignedInUserId(): Promise<string> {
+  const user = await getSession();
+  if (!user) throw new Error("You must be signed in.");
+  return user.id;
+}
+
+export const getMyStorageUsage = createServerFn({ method: "GET" }).handler(async (): Promise<StorageUsage> => {
+  const userId = await requireSignedInUserId();
+  // Quota comes from storage_quotas once billing (step 9) is live; until
+  // then everyone not yet on a paid plan is treated as Starter.
+  const quota = STORAGE_PLANS[DEFAULT_STORAGE_PLAN];
+  const result = await storageFetch<Record<string, unknown>>(`${STORAGE_PREFIX}/usage?owner_id=${encodeURIComponent(userId)}`);
+  return mapUsage(result, quota.bytesQuota);
 });
 
-export const deleteStorageFile = createServerFn({ method: "POST" })
+export const listMyStorageFiles = createServerFn({ method: "GET" }).handler(async (): Promise<{ configured: boolean; files: StorageFile[] }> => {
+  const userId = await requireSignedInUserId();
+  const result = await storageFetch<{ files: Array<Record<string, unknown>> }>(`${STORAGE_PREFIX}/files?limit=50&owner_id=${encodeURIComponent(userId)}`);
+  const rows = (result.data?.files ?? []).map(mapFileRow);
+  return { configured: result.configured && result.ok, files: rows };
+});
+
+export const deleteMyStorageFile = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => {
     if (typeof input !== "string" || !input.trim()) throw new Error("A file key is required");
     return input.trim();
   })
   .handler(async ({ data }): Promise<{ configured: boolean; ok: boolean }> => {
-    // The service requires owner_id as multipart/form-data on DELETE (a
-    // second check independent of the service key) — fetch has no form-encoded
-    // body shorthand for DELETE, so it's built explicitly here.
+    const userId = await requireSignedInUserId();
+    // The service requires owner_id as multipart/form-data on DELETE and
+    // 404s if it doesn't match the file's stored owner — this is what
+    // actually stops one user from deleting another user's file; the
+    // server-derived userId here is what makes that check meaningful.
     const form = new FormData();
-    form.set("owner_id", DEFAULT_OWNER_ID);
+    form.set("owner_id", userId);
     const result = await storageFetch<unknown>(`${STORAGE_PREFIX}/media/${encodeURIComponent(data)}`, {
       method: "DELETE",
       body: form,
@@ -143,7 +175,7 @@ export const deleteStorageFile = createServerFn({ method: "POST" })
 // base64-encoded JSON payload — smaller over the wire (~33% less data) and
 // lets the client drive real upload progress via XMLHttpRequest against
 // this function's own URL, since fetch() has no upload progress event.
-export const uploadStorageFile = createServerFn({ method: "POST" })
+export const uploadMyStorageFile = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => {
     if (!(input instanceof FormData)) throw new Error("Expected form data");
     const file = input.get("file");
@@ -151,10 +183,22 @@ export const uploadStorageFile = createServerFn({ method: "POST" })
     return input;
   })
   .handler(async ({ data }): Promise<{ configured: boolean; ok: boolean; id: string; error?: string }> => {
+    const userId = await requireSignedInUserId();
     const file = data.get("file") as File;
+
+    // Enforce the plan's own per-file cap before spending an upload call on
+    // the storage service — it has its own hard ceiling too (see
+    // MAX_MEDIA_BYTES in coralz-storage), but that's a platform-wide safety
+    // net, not a plan check, so both are needed.
+    const quota = STORAGE_PLANS[DEFAULT_STORAGE_PLAN];
+    if (file.size > quota.maxUploadBytes) {
+      const maxMb = Math.round(quota.maxUploadBytes / (1024 * 1024));
+      return { configured: true, ok: false, id: "", error: `File too large for the ${quota.label} plan (max ${maxMb} MB). Upgrade for larger uploads.` };
+    }
+
     const form = new FormData();
     form.set("file", file, file.name);
-    form.set("owner_id", DEFAULT_OWNER_ID);
+    form.set("owner_id", userId);
     const result = await storageFetch<Record<string, unknown>>(`${STORAGE_PREFIX}/media`, {
       method: "POST",
       body: form,
@@ -173,12 +217,18 @@ export const uploadStorageFile = createServerFn({ method: "POST" })
     return { configured: result.configured, ok: result.ok, id, error };
   });
 
-export const downloadStorageFile = createServerFn({ method: "POST" })
+export const downloadMyStorageFile = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => {
     if (typeof input !== "string" || !input.trim()) throw new Error("A file key is required");
     return input.trim();
   })
   .handler(async ({ data }): Promise<{ ok: boolean; contentType: string; dataBase64: string }> => {
+    // Downloads hit the storage service's public, anonymous-by-design
+    // media/{id} route (the id itself is the access control, same as a
+    // public S3/R2 object URL) — still requiring a session here at least
+    // keeps this app's own download button off limits to signed-out
+    // visitors, even though the underlying URL isn't secret.
+    await requireSignedInUserId();
     const base = storageBase();
     if (!base) return { ok: false, contentType: "", dataBase64: "" };
     try {
@@ -189,4 +239,50 @@ export const downloadStorageFile = createServerFn({ method: "POST" })
     } catch {
       return { ok: false, contentType: "", dataBase64: "" };
     }
+  });
+
+// --- Admin-scoped: /admin/cloud only. Re-checks getIsAdmin() itself rather
+// than trusting the route's beforeLoad, because this function has its own
+// callable HTTP endpoint independent of which page renders a button for it.
+
+async function requireAdmin(): Promise<void> {
+  const isAdmin = await getIsAdmin();
+  if (!isAdmin) throw new Error("Not authorized.");
+}
+
+export const adminGetStorageUsage = createServerFn({ method: "GET" }).handler(async (): Promise<StorageUsage> => {
+  await requireAdmin();
+  const result = await storageFetch<Record<string, unknown>>(`${STORAGE_PREFIX}/usage`);
+  return mapUsage(result, 0); // platform-wide total has no single plan quota to compare against
+});
+
+export const adminListStorageFiles = createServerFn({ method: "GET" }).handler(async (): Promise<{ configured: boolean; files: StorageFile[] }> => {
+  await requireAdmin();
+  const result = await storageFetch<{ files: Array<Record<string, unknown>> }>(`${STORAGE_PREFIX}/files?limit=50`);
+  const rows = (result.data?.files ?? []).map(mapFileRow);
+  return { configured: result.configured && result.ok, files: rows };
+});
+
+export const adminDeleteStorageFile = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => {
+    if (!input || typeof input !== "object") throw new Error("A file key and owner are required");
+    const { key, ownerId } = input as { key?: unknown; ownerId?: unknown };
+    if (typeof key !== "string" || !key.trim()) throw new Error("A file key is required");
+    if (typeof ownerId !== "string" || !ownerId.trim()) throw new Error("An owner id is required");
+    return { key: key.trim(), ownerId: ownerId.trim() };
+  })
+  .handler(async ({ data }): Promise<{ configured: boolean; ok: boolean }> => {
+    await requireAdmin();
+    // The storage service requires the file's own stored owner_id to match
+    // on delete, regardless of who's asking — admin must pass the file's
+    // real owner (surfaced on every row from adminListStorageFiles), not
+    // its own identity. There's no bypass for "any owner" by design; adding
+    // one means touching coralz-storage, held for when it's actually needed.
+    const form = new FormData();
+    form.set("owner_id", data.ownerId);
+    const result = await storageFetch<unknown>(`${STORAGE_PREFIX}/media/${encodeURIComponent(data.key)}`, {
+      method: "DELETE",
+      body: form,
+    });
+    return { configured: result.configured, ok: result.ok };
   });

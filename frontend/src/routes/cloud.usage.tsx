@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Activity, HardDrive, Radio } from 'lucide-react';
 import { createFileRoute } from '@tanstack/react-router';
-import { getStorageStatus, getStorageUsage, type StorageUsage } from '@/lib/storage.functions';
+import { getStorageStatus, getMyStorageUsage, type StorageUsage } from '@/lib/storage.functions';
 import { dashboardHead } from '@/lib/dashboard-head';
 import { getBrandMetadata } from '@/lib/brand.functions';
 
@@ -70,7 +70,7 @@ function Page() {
   useEffect(() => {
     let active = true;
     async function load() {
-      const [usageResult, statusResult] = await Promise.all([getStorageUsage(), getStorageStatus()]);
+      const [usageResult, statusResult] = await Promise.all([getMyStorageUsage(), getStorageStatus()]);
       if (!active) return;
       setUsage(usageResult);
       setOnline(Boolean(statusResult.configured && statusResult.online));

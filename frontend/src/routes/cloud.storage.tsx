@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Upload, Trash2, RefreshCw, Download, Pin, PinOff, MoreVertical, File as FileIcon, Image as ImageIcon, Film, Music, FileText, Check, X, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { getStorageStatus, listStorageFiles, deleteStorageFile, uploadStorageFile, downloadStorageFile, type StorageFile } from '@/lib/storage.functions';
+import { getStorageStatus, listMyStorageFiles, deleteMyStorageFile, uploadMyStorageFile, downloadMyStorageFile, type StorageFile } from '@/lib/storage.functions';
 import { dashboardHead } from '@/lib/dashboard-head';
 import { getBrandMetadata } from '@/lib/brand.functions';
 
@@ -56,7 +56,7 @@ function iconFor(name: string, type: string) {
 type Toast = { id: number; kind: 'success' | 'error'; text: string };
 type UploadItem = { id: number; name: string; percent: number; status: 'uploading' | 'done' | 'error'; error?: string };
 
-// uploadStorageFile is a TanStack server fn; `.url` is the route TanStack
+// uploadMyStorageFile is a TanStack server fn; `.url` is the route TanStack
 // Start registers for it under the hood (see storage.functions.ts). Driving
 // XMLHttpRequest at that URL — instead of calling the function directly —
 // is what makes real upload-progress events possible; fetch() has none.
@@ -65,7 +65,7 @@ function uploadWithProgress(file: File, onProgress: (percent: number) => void): 
     const form = new FormData();
     form.set('file', file, file.name);
     const xhr = new XMLHttpRequest();
-    const url = `${(uploadStorageFile as unknown as { url: string }).url}?createServerFn`;
+    const url = `${(uploadMyStorageFile as unknown as { url: string }).url}?createServerFn`;
     xhr.open('POST', url);
     xhr.setRequestHeader('x-tsr-redirect', 'manual');
     xhr.upload.onprogress = event => {
@@ -115,7 +115,7 @@ function Page() {
 
   async function refresh() {
     setLoading(true);
-    const [statusResult, filesResult] = await Promise.all([getStorageStatus(), listStorageFiles()]);
+    const [statusResult, filesResult] = await Promise.all([getStorageStatus(), listMyStorageFiles()]);
     setOnline(Boolean(statusResult.configured && statusResult.online));
     setFiles(filesResult.files);
     setLoading(false);
@@ -167,7 +167,7 @@ function Page() {
 
   async function handleDelete(file: StorageFile) {
     setBusyKey(file.key);
-    const result = await deleteStorageFile({ data: file.key });
+    const result = await deleteMyStorageFile({ data: file.key });
     setBusyKey(null);
     if (result.ok) {
       toast('success', `${displayName(file)} deleted`);
@@ -182,7 +182,7 @@ function Page() {
 
   async function handleDownload(file: StorageFile) {
     setBusyKey(file.key);
-    const result = await downloadStorageFile({ data: file.key });
+    const result = await downloadMyStorageFile({ data: file.key });
     setBusyKey(null);
     if (!result.ok) {
       toast('error', `Could not download ${displayName(file)}`);

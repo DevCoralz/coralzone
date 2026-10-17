@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, createFileRoute } from '@tanstack/react-router';
 import { HardDrive, KeyRound, Tags, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { getStorageStatus, getStorageUsage } from '@/lib/storage.functions';
+import { getStorageStatus, getMyStorageUsage } from '@/lib/storage.functions';
 import { dashboardHead } from '@/lib/dashboard-head';
 import { getBrandMetadata } from '@/lib/brand.functions';
 
@@ -25,7 +25,7 @@ function Page() {
 
   useEffect(() => {
     getStorageStatus().then(setStatus);
-    getStorageUsage().then(setUsage);
+    getMyStorageUsage().then(setUsage);
   }, []);
 
   const connected = status?.configured && status.online;
