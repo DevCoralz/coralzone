@@ -29,7 +29,7 @@ import { getSession } from "./auth-session.functions";
 import { requireAdmin } from "./admin.functions";
 import { DEFAULT_STORAGE_PLAN } from "./storage-plans";
 import { effectivePlan, allowedMimeTypes, maintenanceMessage } from "./storage-settings";
-import { loadEffectiveSettings } from "./storage-settings.functions";
+import { loadEffectiveSettings } from "./storage-settings.server";
 import { formatBytes } from "./format";
 
 const STORAGE_PREFIX = "/api/v1/storage";

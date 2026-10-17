@@ -9,39 +9,11 @@
 //   adminGetStorageSettings      — admin: overrides + effective + last saved
 //   adminUpdateStorageSettings   — admin: partial update, audited
 import { createServerFn } from "@tanstack/react-start";
-import { getRequest } from "@tanstack/react-start/server";
 import { requireAdmin } from "./admin.functions";
+import { callGateway, loadEffectiveSettings } from "./storage-settings.server";
 import { resolveStorageSettings, type EffectiveStorageSettings, type StorageSettingsOverrides } from "./storage-settings";
 
 const SETTING_KEYS = ["globalMaxUploadBytes", "extraStoragePriceNgn", "allowedFileGroups", "planQuotas", "maintenance"] as const;
-
-// Must only run inside a request (a server function handler).
-async function callGateway(path: string, init?: RequestInit): Promise<Response> {
-  const request = getRequest();
-  const url = new URL(request.url);
-  const forwardedHost = url.hostname === "localhost" ? request.headers.get("x-forwarded-host") : null;
-  const origin = forwardedHost ? `https://${forwardedHost}` : url.origin;
-  const cookie = request.headers.get("cookie") ?? "";
-  return fetch(`${origin}${path}`, {
-    ...init,
-    headers: { ...(init?.headers ?? {}), cookie },
-  });
-}
-
-// Used by other server code (uploads) as well as the server function below.
-// Fails SAFE for availability: if the settings can't be read, the built-in
-// defaults apply, so a settings outage never blocks every upload.
-export async function loadEffectiveSettings(): Promise<EffectiveStorageSettings> {
-  try {
-    const response = await callGateway("/api/cloud/settings");
-    if (!response.ok) return resolveStorageSettings({});
-    const data = (await response.json()) as { overrides?: unknown };
-    return resolveStorageSettings(data.overrides);
-  } catch (error) {
-    console.error("[storage-settings] could not load settings, using defaults:", error);
-    return resolveStorageSettings({});
-  }
-}
 
 export const getEffectiveStorageSettings = createServerFn({ method: "GET" }).handler(
   async (): Promise<EffectiveStorageSettings> => loadEffectiveSettings(),
