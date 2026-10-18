@@ -6,6 +6,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { getStorageStatus, getMyStorageAccess, listMyStorageFiles, deleteMyStorageFile, startMyUpload, finishMyUpload, downloadMyStorageFile, type StorageFile } from '@/lib/storage.functions';
 import { runChunkedUpload, cancelUpload, UploadError, type UploadPhase } from '@/lib/chunked-upload';
 import type { QuotaSummary } from '@/lib/storage-quota';
+import { SELECTED_BUCKET_KEY, type MyBucket } from '@/lib/storage-buckets';
+import { listMyBuckets, listMyBucketFiles } from '@/lib/storage-buckets.functions';
 import { dashboardHead } from '@/lib/dashboard-head';
 import { getBrandMetadata } from '@/lib/brand.functions';
 
@@ -64,10 +66,11 @@ type UploadItem = { id: number; name: string; percent: number; phase: UploadPhas
 // checks the user's plan, ban and free space at the start and again at the end.
 async function uploadFile(
   file: File,
+  bucketId: string | null,
   onProgress: (percent: number, phase: UploadPhase) => void,
   signal: AbortSignal,
 ): Promise<{ configured: boolean; ok: boolean; id: string; error?: string }> {
-  const started = await startMyUpload({ data: { name: file.name, size: file.size } });
+  const started = await startMyUpload({ data: { name: file.name, size: file.size, bucketId } });
   if (!started.ok || !started.session) {
     return { configured: started.configured, ok: false, id: '', error: started.error };
   }
@@ -78,7 +81,7 @@ async function uploadFile(
       session,
       signal,
       onProgress: ({ percent, phase }) => onProgress(percent, phase),
-      finish: () => finishMyUpload({ data: session.id }),
+      finish: () => finishMyUpload({ data: { uploadId: session.id, bucketId } }),
     });
     return { configured: true, ok: true, id: stored.id };
   } catch (error) {
@@ -94,6 +97,13 @@ function Page() {
   // loaded or could not be verified; the server enforces either way.
   const [access, setAccess] = useState<QuotaSummary | null>(null);
   const [files, setFiles] = useState<StorageFile[]>([]);
+  // The user's buckets and the one currently selected ('' = all files, and
+  // uploads then go in without a bucket). Choosing a bucket both filters the
+  // list and sets where new uploads land.
+  const [buckets, setBuckets] = useState<MyBucket[]>([]);
+  const [bucketId, setBucketId] = useState<string>(() => {
+    try { return typeof window === 'undefined' ? '' : window.localStorage.getItem(SELECTED_BUCKET_KEY) ?? ''; } catch { return ''; }
+  });
   const [loading, setLoading] = useState(true);
   const [uploads, setUploads] = useState<UploadItem[]>([]);
   const uploading = uploads.some(item => item.status === 'uploading');
@@ -121,14 +131,25 @@ function Page() {
 
   async function refresh() {
     setLoading(true);
-    const [statusResult, filesResult, accessResult] = await Promise.all([getStorageStatus(), listMyStorageFiles(), getMyStorageAccess()]);
+    const [statusResult, accessResult, bucketsResult] = await Promise.all([getStorageStatus(), getMyStorageAccess(), listMyBuckets()]);
+    const known = bucketsResult.ok ? bucketsResult.buckets : [];
+    // A bucket that was deleted since last visit falls back to "all files".
+    const activeId = bucketId && known.some(b => b.id === bucketId) ? bucketId : '';
+    if (bucketsResult.ok) setBuckets(known);
+    if (activeId !== bucketId) setBucketId(activeId);
+    const filesResult = activeId ? await listMyBucketFiles({ data: activeId }) : await listMyStorageFiles();
     setOnline(Boolean(statusResult.configured && statusResult.online));
     setFiles(filesResult.files);
     setAccess(accessResult);
     setLoading(false);
   }
 
-  useEffect(() => { refresh(); }, []);
+  useEffect(() => { refresh(); }, [bucketId]);
+
+  function chooseBucket(id: string) {
+    setBucketId(id);
+    try { window.localStorage.setItem(SELECTED_BUCKET_KEY, id); } catch { /* storage unavailable */ }
+  }
 
   // Closing the tab mid upload loses the file, so ask the browser to confirm.
   useEffect(() => {
@@ -167,7 +188,7 @@ function Page() {
       const controller = new AbortController();
       controllers.current.set(itemId, controller);
       try {
-        const result = await uploadFile(file, (percent, phase) => {
+        const result = await uploadFile(file, bucketId || null, (percent, phase) => {
           setUploads(current => current.map(u => (u.id === itemId ? { ...u, percent, phase } : u)));
         }, controller.signal);
         if (result.ok) {
@@ -253,10 +274,19 @@ function Page() {
       <h1 className="font-display text-3xl font-normal sm:text-4xl">Storage</h1>
       <div className="flex gap-2">
         <Button variant="glass" onClick={refresh} disabled={loading} className="h-11 w-11 p-0" aria-label="Refresh"><RefreshCw className={loading ? 'animate-spin' : ''} /></Button>
-        <Button variant="crystal" onClick={() => fileInput.current?.click()} disabled={uploading || Boolean(access?.blocked)} className="h-11 px-5 font-normal"><Upload />{uploading ? 'Uploading' : 'Upload'}</Button>
+        <Button variant="crystal" onClick={() => fileInput.current?.click()} disabled={uploading || Boolean(access?.blocked) || Boolean(buckets.find(b => b.id === bucketId)?.frozen)} className="h-11 px-5 font-normal"><Upload />{uploading ? 'Uploading' : 'Upload'}</Button>
         <input ref={fileInput} type="file" multiple className="hidden" onChange={handleUpload} aria-label="Choose files to upload" />
       </div>
     </div>
+
+    {buckets.length > 0 && <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+      <label htmlFor="bucket-select" className="text-muted-foreground">Bucket</label>
+      <select id="bucket-select" value={bucketId} onChange={event => chooseBucket(event.target.value)} disabled={uploading}
+        className="h-10 max-w-full rounded-full border border-glass-border bg-transparent px-4 text-sm outline-none focus:ring-1 focus:ring-primary-glow">
+        <option value="" className="bg-background">All files (no bucket for new uploads)</option>
+        {buckets.map(b => <option key={b.id} value={b.id} className="bg-background">{b.name}{b.frozen ? ' (frozen)' : ''}</option>)}
+      </select>
+    </div>}
 
     {access?.blockMessage && <div role="status" className="dashboard-panel mt-5 flex items-start gap-3 px-4 py-3 text-sm">
       <ShieldAlert size={16} className="mt-0.5 shrink-0 text-primary-glow" aria-hidden="true" />
@@ -309,7 +339,8 @@ function Page() {
             const name = displayName(file);
             const Icon = iconFor(name, file.contentType);
             const pinned = pins.includes(file.key);
-            const meta = [formatBytes(file.size), formatDate(file.updatedAt)].filter(Boolean).join(' · ');
+            const inBucket = !bucketId ? buckets.find(b => b.id === file.bucketId)?.name : undefined;
+            const meta = [formatBytes(file.size), formatDate(file.updatedAt), inBucket ? `in ${inBucket}` : ''].filter(Boolean).join(' · ');
             return (
               <li key={file.key} className="flex items-center gap-4 p-4 sm:px-6">
                 <span className="dashboard-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"><Icon size={17} /></span>

@@ -60,7 +60,8 @@ CREATE TABLE IF NOT EXISTS auth_rate_limits (
 
 -- ── Cloud storage ───────────────────────────────────────────────────────────
 -- Scaffolding for the admin Cloud storage build-out (buckets, API keys,
--- billing). Nothing reads/writes these yet except storage_quotas being
+-- billing). storage_buckets is live as of build step 4 (see
+-- storage-bucket-store.js); API keys and billing are not read yet. storage_quotas is
 -- defaulted in code (see src/lib/storage-plans.ts) — they exist now so later
 -- steps are additive, not another migration. The actual file bytes/metadata
 -- live in the separate coralz-storage service's own `media` table; these

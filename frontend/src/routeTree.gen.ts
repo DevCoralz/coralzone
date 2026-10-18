@@ -24,6 +24,9 @@ import { Route as AdminAdsRouteImport } from './routes/admin.ads'
 import { Route as AdminCloudRouteImport } from './routes/admin.cloud'
 import { Route as AdminCloudIndexRouteImport } from './routes/admin.cloud.index'
 import { Route as AdminCloudBucketsRouteImport } from './routes/admin.cloud.buckets'
+import { Route as CloudBucketsRouteImport } from './routes/cloud.buckets'
+import { Route as AdminCloudBucketsIndexRouteImport } from './routes/admin.cloud.buckets.index'
+import { Route as AdminCloudBucketsBucketIdRouteImport } from './routes/admin.cloud.buckets.$bucketId'
 import { Route as AdminCloudUsersRouteImport } from './routes/admin.cloud.users'
 import { Route as AdminCloudFilesRouteImport } from './routes/admin.cloud.files'
 import { Route as AdminCloudApiKeysRouteImport } from './routes/admin.cloud.api-keys'
@@ -116,6 +119,21 @@ const AdminCloudBucketsRoute = AdminCloudBucketsRouteImport.update({
   id: '/buckets',
   path: '/buckets',
   getParentRoute: () => AdminCloudRoute,
+} as any)
+const CloudBucketsRoute = CloudBucketsRouteImport.update({
+  id: '/buckets',
+  path: '/buckets',
+  getParentRoute: () => CloudRoute,
+} as any)
+const AdminCloudBucketsIndexRoute = AdminCloudBucketsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminCloudBucketsRoute,
+} as any)
+const AdminCloudBucketsBucketIdRoute = AdminCloudBucketsBucketIdRouteImport.update({
+  id: '/$bucketId',
+  path: '/$bucketId',
+  getParentRoute: () => AdminCloudBucketsRoute,
 } as any)
 const AdminCloudUsersRoute = AdminCloudUsersRouteImport.update({
   id: '/users',
@@ -216,7 +234,8 @@ export interface FileRoutesByFullPath {
   '/wallet': typeof WalletRoute
   '/admin/ads': typeof AdminAdsRoute
   '/admin/cloud': typeof AdminCloudRouteWithChildren
-  '/admin/cloud/buckets': typeof AdminCloudBucketsRoute
+  '/admin/cloud/buckets': typeof AdminCloudBucketsRouteWithChildren
+  '/admin/cloud/buckets/$bucketId': typeof AdminCloudBucketsBucketIdRoute
   '/admin/cloud/users': typeof AdminCloudUsersRoute
   '/admin/cloud/files': typeof AdminCloudFilesRoute
   '/admin/cloud/api-keys': typeof AdminCloudApiKeysRoute
@@ -230,6 +249,7 @@ export interface FileRoutesByFullPath {
   '/cloud/docs': typeof CloudDocsRoute
   '/cloud/pay': typeof CloudPayRoute
   '/cloud/pricing': typeof CloudPricingRoute
+  '/cloud/buckets': typeof CloudBucketsRoute
   '/cloud/storage': typeof CloudStorageRoute
   '/cloud/usage': typeof CloudUsageRoute
   '/admin/': typeof AdminIndexRoute
@@ -248,7 +268,8 @@ export interface FileRoutesByTo {
   '/wallet': typeof WalletRoute
   '/admin/ads': typeof AdminAdsRoute
   '/admin/cloud': typeof AdminCloudIndexRoute
-  '/admin/cloud/buckets': typeof AdminCloudBucketsRoute
+  '/admin/cloud/buckets': typeof AdminCloudBucketsIndexRoute
+  '/admin/cloud/buckets/$bucketId': typeof AdminCloudBucketsBucketIdRoute
   '/admin/cloud/users': typeof AdminCloudUsersRoute
   '/admin/cloud/files': typeof AdminCloudFilesRoute
   '/admin/cloud/api-keys': typeof AdminCloudApiKeysRoute
@@ -262,6 +283,7 @@ export interface FileRoutesByTo {
   '/cloud/docs': typeof CloudDocsRoute
   '/cloud/pay': typeof CloudPayRoute
   '/cloud/pricing': typeof CloudPricingRoute
+  '/cloud/buckets': typeof CloudBucketsRoute
   '/cloud/storage': typeof CloudStorageRoute
   '/cloud/usage': typeof CloudUsageRoute
   '/admin': typeof AdminIndexRoute
@@ -283,7 +305,9 @@ export interface FileRoutesById {
   '/admin/ads': typeof AdminAdsRoute
   '/admin/cloud': typeof AdminCloudRouteWithChildren
   '/admin/cloud/': typeof AdminCloudIndexRoute
-  '/admin/cloud/buckets': typeof AdminCloudBucketsRoute
+  '/admin/cloud/buckets': typeof AdminCloudBucketsRouteWithChildren
+  '/admin/cloud/buckets/': typeof AdminCloudBucketsIndexRoute
+  '/admin/cloud/buckets/$bucketId': typeof AdminCloudBucketsBucketIdRoute
   '/admin/cloud/users': typeof AdminCloudUsersRoute
   '/admin/cloud/files': typeof AdminCloudFilesRoute
   '/admin/cloud/api-keys': typeof AdminCloudApiKeysRoute
@@ -297,6 +321,7 @@ export interface FileRoutesById {
   '/cloud/docs': typeof CloudDocsRoute
   '/cloud/pay': typeof CloudPayRoute
   '/cloud/pricing': typeof CloudPricingRoute
+  '/cloud/buckets': typeof CloudBucketsRoute
   '/cloud/storage': typeof CloudStorageRoute
   '/cloud/usage': typeof CloudUsageRoute
   '/admin/': typeof AdminIndexRoute
@@ -320,6 +345,8 @@ export interface FileRouteTypes {
     | '/admin/cloud'
     | '/admin/cloud/'
     | '/admin/cloud/buckets'
+    | '/admin/cloud/buckets/'
+    | '/admin/cloud/buckets/$bucketId'
     | '/admin/cloud/users'
     | '/admin/cloud/files'
     | '/admin/cloud/api-keys'
@@ -333,6 +360,7 @@ export interface FileRouteTypes {
     | '/cloud/docs'
     | '/cloud/pay'
     | '/cloud/pricing'
+    | '/cloud/buckets'
     | '/cloud/storage'
     | '/cloud/usage'
     | '/admin/'
@@ -352,6 +380,7 @@ export interface FileRouteTypes {
     | '/admin/ads'
     | '/admin/cloud'
     | '/admin/cloud/buckets'
+    | '/admin/cloud/buckets/$bucketId'
     | '/admin/cloud/users'
     | '/admin/cloud/files'
     | '/admin/cloud/api-keys'
@@ -365,6 +394,7 @@ export interface FileRouteTypes {
     | '/cloud/docs'
     | '/cloud/pay'
     | '/cloud/pricing'
+    | '/cloud/buckets'
     | '/cloud/storage'
     | '/cloud/usage'
     | '/admin'
@@ -386,6 +416,8 @@ export interface FileRouteTypes {
     | '/admin/cloud'
     | '/admin/cloud/'
     | '/admin/cloud/buckets'
+    | '/admin/cloud/buckets/'
+    | '/admin/cloud/buckets/$bucketId'
     | '/admin/cloud/users'
     | '/admin/cloud/files'
     | '/admin/cloud/api-keys'
@@ -399,6 +431,7 @@ export interface FileRouteTypes {
     | '/cloud/docs'
     | '/cloud/pay'
     | '/cloud/pricing'
+    | '/cloud/buckets'
     | '/cloud/storage'
     | '/cloud/usage'
     | '/admin/'
@@ -534,6 +567,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCloudBucketsRouteImport
       parentRoute: typeof AdminCloudRoute
     }
+    '/cloud/buckets': {
+      id: '/cloud/buckets'
+      path: '/buckets'
+      fullPath: '/cloud/buckets'
+      preLoaderRoute: typeof CloudBucketsRouteImport
+      parentRoute: typeof CloudRoute
+    }
+    '/admin/cloud/buckets/': {
+      id: '/admin/cloud/buckets/'
+      path: '/'
+      fullPath: '/admin/cloud/buckets/'
+      preLoaderRoute: typeof AdminCloudBucketsIndexRouteImport
+      parentRoute: typeof AdminCloudBucketsRoute
+    }
+    '/admin/cloud/buckets/$bucketId': {
+      id: '/admin/cloud/buckets/$bucketId'
+      path: '/$bucketId'
+      fullPath: '/admin/cloud/buckets/$bucketId'
+      preLoaderRoute: typeof AdminCloudBucketsBucketIdRouteImport
+      parentRoute: typeof AdminCloudBucketsRoute
+    }
     '/admin/cloud/users': {
       id: '/admin/cloud/users'
       path: '/users'
@@ -658,6 +712,7 @@ declare module '@tanstack/react-router' {
 
 interface CloudRouteChildren {
   CloudApiKeysRoute: typeof CloudApiKeysRoute
+  CloudBucketsRoute: typeof CloudBucketsRoute
   CloudDocsRoute: typeof CloudDocsRoute
   CloudPayRoute: typeof CloudPayRoute
   CloudPricingRoute: typeof CloudPricingRoute
@@ -668,6 +723,7 @@ interface CloudRouteChildren {
 
 const CloudRouteChildren: CloudRouteChildren = {
   CloudApiKeysRoute: CloudApiKeysRoute,
+  CloudBucketsRoute: CloudBucketsRoute,
   CloudDocsRoute: CloudDocsRoute,
   CloudPayRoute: CloudPayRoute,
   CloudPricingRoute: CloudPricingRoute,
@@ -678,9 +734,22 @@ const CloudRouteChildren: CloudRouteChildren = {
 
 const CloudRouteWithChildren = CloudRoute._addFileChildren(CloudRouteChildren)
 
+interface AdminCloudBucketsRouteChildren {
+  AdminCloudBucketsIndexRoute: typeof AdminCloudBucketsIndexRoute
+  AdminCloudBucketsBucketIdRoute: typeof AdminCloudBucketsBucketIdRoute
+}
+
+const AdminCloudBucketsRouteChildren: AdminCloudBucketsRouteChildren = {
+  AdminCloudBucketsIndexRoute: AdminCloudBucketsIndexRoute,
+  AdminCloudBucketsBucketIdRoute: AdminCloudBucketsBucketIdRoute,
+}
+
+const AdminCloudBucketsRouteWithChildren =
+  AdminCloudBucketsRoute._addFileChildren(AdminCloudBucketsRouteChildren)
+
 interface AdminCloudRouteChildren {
   AdminCloudIndexRoute: typeof AdminCloudIndexRoute
-  AdminCloudBucketsRoute: typeof AdminCloudBucketsRoute
+  AdminCloudBucketsRoute: typeof AdminCloudBucketsRouteWithChildren
   AdminCloudUsersRoute: typeof AdminCloudUsersRoute
   AdminCloudFilesRoute: typeof AdminCloudFilesRoute
   AdminCloudApiKeysRoute: typeof AdminCloudApiKeysRoute
@@ -690,7 +759,7 @@ interface AdminCloudRouteChildren {
 
 const AdminCloudRouteChildren: AdminCloudRouteChildren = {
   AdminCloudIndexRoute: AdminCloudIndexRoute,
-  AdminCloudBucketsRoute: AdminCloudBucketsRoute,
+  AdminCloudBucketsRoute: AdminCloudBucketsRouteWithChildren,
   AdminCloudUsersRoute: AdminCloudUsersRoute,
   AdminCloudFilesRoute: AdminCloudFilesRoute,
   AdminCloudApiKeysRoute: AdminCloudApiKeysRoute,

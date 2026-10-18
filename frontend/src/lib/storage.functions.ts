@@ -37,72 +37,8 @@ import { requireAdmin } from "./admin.functions";
 import { allowedMimeTypes } from "./storage-settings";
 import { checkUpload, summarizeQuota, type QuotaSummary } from "./storage-quota";
 import { loadMyQuota, QUOTA_UNAVAILABLE } from "./storage-quota.server";
-
-const STORAGE_PREFIX = "/api/v1/storage";
-
-function storageBase(): string {
-  return (process.env.STORAGE_SERVICE_URL ?? "").trim().replace(/\/+$/, "");
-}
-
-// Where the browser sends upload chunks. Only https is accepted (or localhost
-// for development), because the one time upload token travels in a header.
-function storagePublicBase(): string {
-  const explicit = (process.env.STORAGE_PUBLIC_URL ?? "").trim().replace(/\/+$/, "");
-  const base = explicit || storageBase();
-  if (/^https:\/\//i.test(base) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(base)) return base;
-  return "";
-}
-
-function storageKey(): string {
-  return (process.env.STORAGE_SERVICE_KEY ?? "").trim();
-}
-
-type StorageResult<T> = {
-  configured: boolean;
-  ok: boolean;
-  status: number;
-  data: T | null;
-  // Short, service-authored reason for a 4xx rejection (e.g. "File type not
-  // allowed"). Never set for 5xx/network failures, which stay generic.
-  detail?: string;
-};
-
-async function storageFetch<T>(path: string, init?: RequestInit): Promise<StorageResult<T>> {
-  const base = storageBase();
-  if (!base) return { configured: false, ok: false, status: 0, data: null };
-  const key = storageKey();
-  try {
-    const response = await fetch(`${base}${path}`, {
-      ...init,
-      headers: {
-        ...(key ? { "X-Service-Key": key } : {}),
-        ...(init?.headers ?? {}),
-      },
-    });
-    if (!response.ok) {
-      let detail: string | undefined;
-      if (response.status >= 400 && response.status < 500) {
-        try {
-          const body = (await response.json()) as { detail?: unknown };
-          if (typeof body.detail === "string") detail = body.detail.slice(0, 200);
-        } catch {
-          /* no JSON body */
-        }
-      }
-      return { configured: true, ok: false, status: response.status, data: null, detail };
-    }
-    const text = await response.text();
-    let data: T | null = null;
-    try {
-      data = (text ? JSON.parse(text) : null) as T;
-    } catch {
-      data = text as unknown as T;
-    }
-    return { configured: true, ok: true, status: response.status, data };
-  } catch {
-    return { configured: true, ok: false, status: 0, data: null };
-  }
-}
+import { loadUsableBucket } from "./storage-buckets.server";
+import { STORAGE_PREFIX, storageBase, storagePublicBase, storageFetch, type StorageResult } from "./storage-service.server";
 
 export interface StorageFile {
   key: string;
@@ -114,7 +50,7 @@ export interface StorageFile {
   bucketId: string | null;
 }
 
-function mapFileRow(row: Record<string, unknown>): StorageFile {
+export function mapFileRow(row: Record<string, unknown>): StorageFile {
   const key = String(row.key ?? row.id ?? "file");
   const original = [row.name, row.filename, row.file_name, row.original_name, row.original_filename, row.originalName, row.title]
     .find(value => typeof value === "string" && value.trim());
@@ -232,10 +168,11 @@ export interface MyUploadSession {
 export const startMyUpload = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => {
     if (!input || typeof input !== "object") throw new Error("A file name and size are required");
-    const { name, size } = input as { name?: unknown; size?: unknown };
+    const { name, size, bucketId } = input as { name?: unknown; size?: unknown; bucketId?: unknown };
     if (typeof name !== "string" || !name.trim() || name.length > 255) throw new Error("A valid file name is required");
     if (typeof size !== "number" || !Number.isSafeInteger(size) || size < 1) throw new Error("A valid file size is required");
-    return { name: name.trim(), size };
+    if (bucketId !== undefined && bucketId !== null && (typeof bucketId !== "string" || !/^[0-9a-f-]{36}$/i.test(bucketId))) throw new Error("Unknown bucket");
+    return { name: name.trim(), size, bucketId: typeof bucketId === "string" ? bucketId.toLowerCase() : null };
   })
   .handler(async ({ data }): Promise<{ configured: boolean; ok: boolean; session?: MyUploadSession; error?: string }> => {
     const userId = await requireSignedInUserId();
@@ -257,6 +194,12 @@ export const startMyUpload = createServerFn({ method: "POST" })
     const decision = checkUpload(quota, settings, data.size, Number.isFinite(bytesUsed) ? bytesUsed : 0);
     if (!decision.ok) return { configured: true, ok: false, error: decision.error };
 
+    // A chosen bucket must be the user's own and not frozen by an admin.
+    if (data.bucketId) {
+      const bucket = await loadUsableBucket(data.bucketId);
+      if (!bucket.ok) return { configured: true, ok: false, error: bucket.error };
+    }
+
     // The storage service checks the same limits again, and also counts the
     // uploads this user already has open, so two at once cannot overfill the quota.
     const result = await storageFetch<Record<string, unknown>>(`${STORAGE_PREFIX}/uploads`, {
@@ -269,6 +212,7 @@ export const startMyUpload = createServerFn({ method: "POST" })
         max_bytes: quota.maxUploadBytes,
         quota_bytes: quota.bytesQuota,
         allowed_mime: allowedMimeTypes(settings.allowedFileGroups),
+        bucket_id: data.bucketId,
       }),
     });
     const body = result.data && typeof result.data === "object" ? result.data : {};
@@ -281,10 +225,13 @@ export const startMyUpload = createServerFn({ method: "POST" })
 
 export const finishMyUpload = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => {
-    if (typeof input !== "string" || !/^[0-9a-f-]{36}$/.test(input.trim())) throw new Error("An upload id is required");
-    return input.trim();
+    const v = (input && typeof input === "object" ? input : {}) as { uploadId?: unknown; bucketId?: unknown };
+    if (typeof v.uploadId !== "string" || !/^[0-9a-f-]{36}$/.test(v.uploadId.trim())) throw new Error("An upload id is required");
+    if (v.bucketId !== undefined && v.bucketId !== null && (typeof v.bucketId !== "string" || !/^[0-9a-f-]{36}$/i.test(v.bucketId))) throw new Error("Unknown bucket");
+    return { uploadId: v.uploadId.trim(), bucketId: typeof v.bucketId === "string" ? v.bucketId.toLowerCase() : null };
   })
-  .handler(async ({ data }): Promise<{ ok: boolean; error?: string; retry?: boolean }> => {
+  .handler(async ({ data: input }): Promise<{ ok: boolean; error?: string; retry?: boolean }> => {
+    const data = input.uploadId;
     const userId = await requireSignedInUserId();
 
     // Check again: the user may have been banned or frozen, or maintenance
@@ -296,10 +243,22 @@ export const finishMyUpload = createServerFn({ method: "POST" })
       return { ok: false, error: context.quota.blockMessage };
     }
 
+    // The bucket may have been frozen or deleted while a long upload ran.
+    if (input.bucketId) {
+      const bucket = await loadUsableBucket(input.bucketId);
+      if (!bucket.ok) {
+        await storageFetch<unknown>(`${STORAGE_PREFIX}/uploads/${data}?owner_id=${encodeURIComponent(userId)}`, { method: "DELETE" });
+        return { ok: false, error: bucket.error };
+      }
+    }
+
+    // expect_bucket makes the storage service refuse unless this is the bucket
+    // the upload was started for, so the check above cannot be dodged by
+    // claiming a different bucket here.
     const result = await storageFetch<unknown>(`${STORAGE_PREFIX}/uploads/${data}/complete`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ owner_id: userId }),
+      body: JSON.stringify({ owner_id: userId, expect_bucket: true, bucket_id: input.bucketId }),
     });
     if (result.ok) return { ok: true };
     // A 5xx or a dropped connection is worth another go; a 4xx is final.

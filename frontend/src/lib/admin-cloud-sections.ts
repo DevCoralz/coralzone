@@ -27,7 +27,7 @@ export interface CloudAdminSection {
 
 export const CLOUD_ADMIN_SECTIONS: readonly CloudAdminSection[] = [
   { to: '/admin/cloud', label: 'Overview', description: 'Service health and platform-wide totals.', icon: LayoutGrid, status: 'live', step: 1 },
-  { to: '/admin/cloud/buckets', label: 'Buckets', description: 'Every bucket: owner, size, file count. Freeze or delete.', icon: Boxes, status: 'planned', step: 4 },
+  { to: '/admin/cloud/buckets', label: 'Buckets', description: 'Every bucket: owner, size, file count. Freeze or delete.', icon: Boxes, status: 'live', step: 4 },
   { to: '/admin/cloud/users', label: 'Users & usage', description: 'Look up a user, see their storage, cap or ban them.', icon: Users, status: 'partial', step: 5 },
   { to: '/admin/cloud/files', label: 'Files & abuse', description: 'Browse all files, remove abuse, block file types.', icon: FileWarning, status: 'live', step: 7 },
   { to: '/admin/cloud/api-keys', label: 'API keys', description: 'Keys across all users: last used, revoke, rate-limit.', icon: KeyRound, status: 'planned', step: 6 },

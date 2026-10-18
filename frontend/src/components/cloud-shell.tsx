@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { LayoutGrid, Tags, HardDrive, KeyRound, Activity, BookOpen, ArrowLeft, Cloud, Home, Code2, Droplets, Wallet } from 'lucide-react';
+import { LayoutGrid, Tags, HardDrive, Boxes, KeyRound, Activity, BookOpen, ArrowLeft, Cloud, Home, Code2, Droplets, Wallet } from 'lucide-react';
 import bg from '@/assets/crystal-bg.jpg';
 import { Button } from '@/components/ui/button';
 
@@ -8,6 +8,7 @@ const sections = [
   { to: '/cloud', label: 'Overview', icon: LayoutGrid },
   { to: '/cloud/pricing', label: 'Pricing', icon: Tags },
   { to: '/cloud/storage', label: 'Storage', icon: HardDrive },
+  { to: '/cloud/buckets', label: 'Buckets', icon: Boxes },
   { to: '/cloud/api-keys', label: 'API keys', icon: KeyRound },
   { to: '/cloud/usage', label: 'Usage', icon: Activity },
   { to: '/cloud/docs', label: 'Docs', icon: BookOpen },

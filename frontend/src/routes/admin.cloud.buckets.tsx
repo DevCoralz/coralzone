@@ -1,21 +1,8 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { cloudAdminHead } from '@/lib/admin-cloud-head';
-import { AdminCloudHeader } from '@/components/admin-cloud-header';
-import { AdminCloudPlanned } from '@/components/admin-cloud-planned';
+import { createFileRoute, Outlet } from '@tanstack/react-router';
 
+// Layout for the Buckets branch: the list is admin.cloud.buckets.index.tsx and
+// a single bucket is admin.cloud.buckets.$bucketId.tsx. The admin guard already
+// ran in the parent /admin/cloud route.
 export const Route = createFileRoute('/admin/cloud/buckets')({
-  head: () => cloudAdminHead("Buckets", "Every bucket across all users."),
-  component: AdminCloudBuckets,
+  component: Outlet,
 });
-
-function AdminCloudBuckets() {
-  return <>
-    <AdminCloudHeader title={"Buckets"} description={"Every bucket across all users."} />
-    <AdminCloudPlanned step={4} items={[
-      "List buckets with owner, name, storage used and file count",
-      "Filter buckets that are more than 80% full",
-      "View the files inside a bucket",
-      "Freeze or delete a bucket",
-    ]} />
-  </>;
-}

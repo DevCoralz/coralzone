@@ -16,3 +16,4 @@
 - Keep the public dashboard preview in focused shell, chart and overview components; sample account data is client-only and must be replaced by authenticated owner-scoped reads before connecting real balances.
 - Give each dashboard navigation destination its own top-level preview route and unique metadata; keep payment and unfinished product actions explicitly unavailable until connected.
 - Keep staff administration in a separate `/admin` route family with focused pages and client-only sample records until a separate backend is connected; this preserves the public/customer experience and prevents preview actions from implying persisted account changes.
+- Keep bucket rules (plan limit, unique names, ownership, ban, frozen) in the gateway's storage-bucket-store.js, which takes the database as an argument so it is unit tested; server functions only combine it with storage-service data and never trust a bucket id from the browser without re-checking it.

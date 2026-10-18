@@ -7,19 +7,10 @@
 // there is exactly one copy of that logic.
 import { randomUUID } from "node:crypto";
 import { query, withTransaction } from "./db.js";
+import { toEntitlement } from "./storage-entitlement.js";
 
 const LOG_DETAILS_MAX = 8_000;
 
-function toEntitlement(row) {
-  return {
-    plan: row?.plan ?? "starter",
-    extraBytes: Number(row?.extra_bytes ?? 0),
-    frozen: row?.status === "frozen",
-    bytesQuotaOverride: row?.bytes_quota == null ? null : Number(row.bytes_quota),
-    maxUploadOverride: row?.max_upload_bytes == null ? null : Number(row.max_upload_bytes),
-    banned: row?.banned_at != null,
-  };
-}
 
 const ENTITLEMENT_SELECT = `
   SELECT u.id, u.name, u.email, q.plan, q.extra_bytes, q.status, q.bytes_quota, q.max_upload_bytes,
