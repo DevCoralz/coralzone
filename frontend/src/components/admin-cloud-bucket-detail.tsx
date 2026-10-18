@@ -112,8 +112,8 @@ export function AdminCloudBucketDetail({ bucketId }: { bucketId: string }) {
                 {row.ownerBytes === null || row.ownerRatio === null ? '—' : `${formatBytes(row.ownerBytes)} of ${formatBytes(row.ownerQuotaBytes)} (${formatPercent(row.ownerRatio)})`}</dd></div>
               {row.ownerBlock && <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Account</dt><dd className="text-destructive">{row.ownerBlock === 'banned' ? 'Banned from Cloud' : 'Storage frozen'}</dd></div>}
             </dl>
-            <Button asChild variant="glass" className="mt-4 h-9 font-normal"><Link to="/admin/cloud/users"><UserRound />Manage this user</Link></Button>
-            <p className="mt-2 text-xs text-muted-foreground">On the Users page, look the user up by email to cap, freeze or ban them.</p>
+            <Button asChild variant="glass" className="mt-4 h-9 font-normal"><Link to="/admin/cloud/users/$userId" params={{ userId: row.owner.id }}><UserRound />Open this user</Link></Button>
+            <p className="mt-2 text-xs text-muted-foreground">Their buckets and files are there, and so are the controls to cap, freeze or ban them.</p>
           </div>
         </section>
 

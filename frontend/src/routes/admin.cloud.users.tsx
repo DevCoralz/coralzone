@@ -1,24 +1,8 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { cloudAdminHead } from '@/lib/admin-cloud-head';
-import { AdminCloudHeader } from '@/components/admin-cloud-header';
-import { AdminCloudPlanned } from '@/components/admin-cloud-planned';
-import { AdminUserCloudControls } from '@/components/admin-user-cloud-controls';
+import { createFileRoute, Outlet } from '@tanstack/react-router';
 
+// Layout for the Users branch: the list is admin.cloud.users.index.tsx and a
+// single person is admin.cloud.users.$userId.*. The admin guard already ran in
+// the parent /admin/cloud route.
 export const Route = createFileRoute('/admin/cloud/users')({
-  head: () => cloudAdminHead("Users & usage", "Look up a user and control their storage."),
-  component: AdminCloudUsers,
+  component: Outlet,
 });
-
-function AdminCloudUsers() {
-  return <>
-    <AdminCloudHeader title={"Users & usage"} description={"Look up a user and control their storage."} />
-    <AdminUserCloudControls />
-    <div className="mt-10">
-      <AdminCloudPlanned step={5} items={[
-        "Search users by name or email, with a list of everyone using storage",
-        "See each user's buckets, total GB used and request count",
-        "Reset a user's API key (arrives with the API-keys step)",
-      ]} />
-    </div>
-  </>;
-}

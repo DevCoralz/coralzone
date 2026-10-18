@@ -37,6 +37,7 @@ import cloudEntitlement from "./_lib/handlers/cloud-entitlement.js";
 import adminCloudUserControls from "./_lib/handlers/admin-cloud-user-controls.js";
 import cloudBuckets from "./_lib/handlers/cloud-buckets.js";
 import adminCloudBuckets from "./_lib/handlers/admin-cloud-buckets.js";
+import adminCloudUsers from "./_lib/handlers/admin-cloud-users.js";
 
 // Keyed by "<METHOD> /path" — each handler still checks req.method itself
 // too (defense in depth / unit-testability), this table just decides
@@ -68,6 +69,7 @@ const routes = {
   "GET /admin/cloud-buckets": adminCloudBuckets,
   "PUT /admin/cloud-buckets": adminCloudBuckets,
   "DELETE /admin/cloud-buckets": adminCloudBuckets,
+  "GET /admin/cloud-users": adminCloudUsers,
 };
 
 // Recognizable messages from our own config-validation checks (missing

@@ -61,12 +61,15 @@ export function parseRawAdminBucket(value: unknown): RawAdminBucket | null {
 export interface UsageMaps {
   buckets: Map<string, BucketUsage>;
   owners: Map<string, number>;
+  // File count per owner. Only filled when the storage service is new enough
+  // to report it, so a missing entry means "not known", not "zero".
+  ownerFiles: Map<string, number>;
 }
 
 // One storage-service call per 500 ids. null = the service could not be
 // reached, so callers show "unavailable" instead of pretending the bucket is empty.
 export async function fetchUsage(bucketIds: string[], ownerIds: string[]): Promise<UsageMaps | null> {
-  const out: UsageMaps = { buckets: new Map(), owners: new Map() };
+  const out: UsageMaps = { buckets: new Map(), owners: new Map(), ownerFiles: new Map() };
   const uniqueBuckets = [...new Set(bucketIds)];
   const uniqueOwners = [...new Set(ownerIds)];
   const calls = Math.max(1, Math.ceil(Math.max(uniqueBuckets.length, uniqueOwners.length) / 500));
@@ -79,7 +82,10 @@ export async function fetchUsage(bucketIds: string[], ownerIds: string[]): Promi
     });
     if (!result.ok || !result.data) return null;
     for (const row of result.data.buckets ?? []) out.buckets.set(String(row.bucketId), { files: Number(row.files ?? 0), bytes: Number(row.bytes ?? 0) });
-    for (const row of result.data.owners ?? []) out.owners.set(String(row.ownerId), Number(row.bytes ?? 0));
+    for (const row of result.data.owners ?? []) {
+      out.owners.set(String(row.ownerId), Number(row.bytes ?? 0));
+      if (typeof row.files === "number" && Number.isFinite(row.files)) out.ownerFiles.set(String(row.ownerId), row.files);
+    }
   }
   return out;
 }
