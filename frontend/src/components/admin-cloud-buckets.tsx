@@ -83,7 +83,7 @@ export function AdminCloudBuckets() {
     </div>
 
     {filter === 'full' && <p className="mt-3 text-xs text-muted-foreground">
-      A bucket has no size cap of its own: buckets share their owner's storage. This view lists buckets whose owner is using {Math.round(NEARLY_FULL_RATIO * 100)}% or more of their allowance, fullest first.
+      A bucket has no size cap of its own: buckets share their owner's storage. This view lists buckets whose owner is using more than {Math.round(NEARLY_FULL_RATIO * 100)}% of their allowance, fullest first.
       {truncated && ` Only the newest ${NEARLY_FULL_SCAN_CAP.toLocaleString('en-NG')} buckets were checked.`}
     </p>}
 

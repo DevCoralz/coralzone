@@ -62,7 +62,8 @@ describe('fullness', () => {
   });
   it('nearly full starts at exactly 80%', () => {
     expect(isNearlyFull(0.79999)).toBe(false);
-    expect(isNearlyFull(0.8)).toBe(true);
+    expect(isNearlyFull(0.8)).toBe(false); // over 80%, not 80% itself
+    expect(isNearlyFull(0.8001)).toBe(true);
     expect(isNearlyFull(1.3)).toBe(true);
   });
   it('percent text', () => {

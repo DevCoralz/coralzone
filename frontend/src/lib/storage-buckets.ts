@@ -19,7 +19,7 @@ export const SELECTED_BUCKET_KEY = 'cloudone-selected-bucket';
 export const BUCKET_LIMITS: Record<StoragePlanId, number | null> = { starter: 1, pro: null, scale: null };
 
 export const ADMIN_BUCKET_PAGE_SIZE = 25;
-// "Nearly full" starts here (the 80% in the admin brief).
+// "Nearly full" means above this (the 80% in the admin brief).
 export const NEARLY_FULL_RATIO = 0.8;
 // The nearly-full view has to look at every bucket, so it reads at most this many.
 export const NEARLY_FULL_SCAN_CAP = 1000;
@@ -79,7 +79,8 @@ export function ownerFullness(ownerBytes: number, ownerQuotaBytes: number): numb
   return Math.max(0, ownerBytes) / ownerQuotaBytes;
 }
 
-export const isNearlyFull = (ratio: number): boolean => ratio >= NEARLY_FULL_RATIO;
+// Strictly above the line, as the admin brief says ("over 80% full"): exactly 80% is not flagged.
+export const isNearlyFull = (ratio: number): boolean => ratio > NEARLY_FULL_RATIO;
 
 export function formatPercent(ratio: number): string {
   const pct = Math.round(ratio * 100);

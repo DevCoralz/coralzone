@@ -85,11 +85,13 @@ export async function fetchUsage(bucketIds: string[], ownerIds: string[]): Promi
 }
 
 // The user's own bucket, if it exists and uploads into it are allowed.
-export async function loadUsableBucket(bucketId: string): Promise<{ ok: true; bucket: Bucket } | { ok: false; error: string }> {
+// `transient` means the lookup itself failed (our server hiccuped), so nothing is
+// known about the bucket. Callers may retry; they must not treat it as "gone".
+export async function loadUsableBucket(bucketId: string): Promise<{ ok: true; bucket: Bucket } | { ok: false; error: string; transient?: boolean }> {
   const reply = await gateway(`/api/cloud/buckets?id=${encodeURIComponent(bucketId)}`);
   if (reply.status === 404) return { ok: false, error: "That bucket no longer exists. Pick another one." };
   const bucket = reply.ok ? parseBucket(reply.body.bucket) : null;
-  if (!bucket) return { ok: false, error: UNREACHABLE };
+  if (!bucket) return { ok: false, error: UNREACHABLE, transient: true };
   if (bucket.frozen) return { ok: false, error: "This bucket is frozen, so uploads to it are paused. Contact support." };
   return { ok: true, bucket };
 }

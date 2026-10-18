@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { dashboardHead } from '@/lib/dashboard-head';
 import { getBrandMetadata } from '@/lib/brand.functions';
 import { getEffectiveStorageSettings } from '@/lib/storage-settings.functions';
+import { describeBucketLimit } from '@/lib/storage-buckets';
 import { effectivePlan, type EffectiveStorageSettings } from '@/lib/storage-settings';
 import type { StoragePlanId } from '@/lib/storage-plans';
 import { formatBytes, formatCount, formatNgn } from '@/lib/format';
@@ -39,6 +40,7 @@ function buildPlans(settings: EffectiveStorageSettings) {
       maxUpload: formatBytes(plan.maxUploadBytes),
       requests: plan.requestsPerMonth === null ? 'Unlimited requests' : `${formatCount(plan.requestsPerMonth)} requests a month`,
       keys: plan.apiKeyLimit === null ? 'Unlimited API keys' : `${plan.apiKeyLimit} API key${plan.apiKeyLimit === 1 ? '' : 's'}`,
+      buckets: describeBucketLimit(id),
       perks: PERKS[id],
       popular: id === 'pro',
     };
@@ -62,6 +64,7 @@ function Page() {
             <li className="flex items-center gap-2"><Check size={15} className="text-primary-glow" />{plan.maxUpload} max file upload</li>
             <li className="flex items-center gap-2"><Check size={15} className="text-primary-glow" />{plan.requests}</li>
             <li className="flex items-center gap-2"><Check size={15} className="text-primary-glow" />{plan.keys}</li>
+            <li className="flex items-center gap-2"><Check size={15} className="text-primary-glow" />{plan.buckets}</li>
             {plan.perks.map(perk => <li key={perk} className="flex items-center gap-2"><Check size={15} className="text-primary-glow" />{perk}</li>)}
           </ul>
           <Button asChild variant={plan.popular ? 'crystal' : 'glass'} className="mt-8 h-11 px-5 font-normal">

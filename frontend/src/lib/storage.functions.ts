@@ -246,6 +246,10 @@ export const finishMyUpload = createServerFn({ method: "POST" })
     // The bucket may have been frozen or deleted while a long upload ran.
     if (input.bucketId) {
       const bucket = await loadUsableBucket(input.bucketId);
+      // A hiccup on our side must not throw away a finished upload (it can be
+      // gigabytes): keep it and let the browser ask again. Only a bucket that is
+      // really gone or frozen cancels the upload.
+      if (!bucket.ok && bucket.transient) return { ok: false, retry: true, error: bucket.error };
       if (!bucket.ok) {
         await storageFetch<unknown>(`${STORAGE_PREFIX}/uploads/${data}?owner_id=${encodeURIComponent(userId)}`, { method: "DELETE" });
         return { ok: false, error: bucket.error };
@@ -261,6 +265,11 @@ export const finishMyUpload = createServerFn({ method: "POST" })
       body: JSON.stringify({ owner_id: userId, expect_bucket: true, bucket_id: input.bucketId }),
     });
     if (result.ok) return { ok: true };
+    // The storage service says this upload was started for another bucket: it can
+    // never be finished, so free its partial file now instead of waiting for it to expire.
+    if (result.status === 409 && result.detail?.includes("different bucket")) {
+      await storageFetch<unknown>(`${STORAGE_PREFIX}/uploads/${data}?owner_id=${encodeURIComponent(userId)}`, { method: "DELETE" });
+    }
     // A 5xx or a dropped connection is worth another go; a 4xx is final.
     return { ok: false, retry: result.status === 0 || result.status >= 500, error: result.detail ?? "We could not finish the upload. Please try again." };
   });
