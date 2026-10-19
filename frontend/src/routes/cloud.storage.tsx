@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Upload, Trash2, RefreshCw, Download, Pin, PinOff, MoreVertical, File as FileIcon, Image as ImageIcon, Film, Music, FileText, Check, X, Search, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getStorageStatus, getMyStorageAccess, listMyStorageFiles, deleteMyStorageFile, startMyUpload, finishMyUpload, downloadMyStorageFile, type StorageFile } from '@/lib/storage.functions';
 import { runChunkedUpload, cancelUpload, UploadError, type UploadPhase } from '@/lib/chunked-upload';
 import type { QuotaSummary } from '@/lib/storage-quota';
@@ -20,6 +21,9 @@ export const Route = createFileRoute('/cloud/storage')({
 const NAMES_KEY = 'cloudone-file-names';
 const PINS_KEY = 'cloudone-pinned-files';
 const TOAST_MS = 3500;
+
+// The styled Select cannot hold an empty value, so "no bucket" is this word.
+const ALL_BUCKETS = '__all__';
 
 function readJson<T>(key: string, fallback: T): T {
   try {
@@ -280,12 +284,14 @@ function Page() {
     </div>
 
     {buckets.length > 0 && <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
-      <label htmlFor="bucket-select" className="text-muted-foreground">Bucket</label>
-      <select id="bucket-select" value={bucketId} onChange={event => chooseBucket(event.target.value)} disabled={uploading}
-        className="h-10 max-w-full rounded-full border border-glass-border bg-transparent px-4 text-sm outline-none focus:ring-1 focus:ring-primary-glow">
-        <option value="" className="bg-background">All files (no bucket for new uploads)</option>
-        {buckets.map(b => <option key={b.id} value={b.id} className="bg-background">{b.name}{b.frozen ? ' (frozen)' : ''}</option>)}
-      </select>
+      <span id="bucket-select-label" className="text-muted-foreground">Bucket</span>
+      <Select value={bucketId || ALL_BUCKETS} onValueChange={value => chooseBucket(value === ALL_BUCKETS ? '' : value)} disabled={uploading}>
+        <SelectTrigger id="bucket-select" aria-labelledby="bucket-select-label" className="h-10 w-auto min-w-[220px] max-w-full rounded-full border-glass-border bg-transparent px-4 text-sm"><SelectValue /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ALL_BUCKETS}>All files (no bucket for new uploads)</SelectItem>
+          {buckets.map(b => <SelectItem key={b.id} value={b.id}>{b.name}{b.frozen ? ' (frozen)' : ''}</SelectItem>)}
+        </SelectContent>
+      </Select>
     </div>}
 
     {access?.blockMessage && <div role="status" className="dashboard-panel mt-5 flex items-start gap-3 px-4 py-3 text-sm">

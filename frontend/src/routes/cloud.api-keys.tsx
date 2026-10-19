@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { KeyRound, Copy, Trash2, Plus, Check, RefreshCw, X, TriangleAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -23,6 +24,9 @@ export const Route = createFileRoute('/cloud/api-keys')({
   head: ({ loaderData }) => dashboardHead('Cloud API keys', 'Create and manage your API keys.', '/cloud/api-keys', loaderData?.origin),
   component: Page,
 });
+
+// The styled Select cannot hold an empty value, so "all buckets" is this word.
+const ALL_BUCKETS = '__all__';
 
 type Notice = { kind: 'success' | 'error'; text: string } | null;
 
@@ -148,11 +152,13 @@ function Page() {
         <Input id="key-name" value={name} onChange={event => setName(event.target.value)} maxLength={KEY_NAME_MAX + 20}
           placeholder="Name, e.g. Mobile app" autoComplete="off" disabled={!createCheck.ok || banned}
           className="min-w-[180px] flex-1 rounded-full border-glass-border bg-transparent" aria-describedby="key-hint" />
-        <select value={scope} onChange={event => setScope(event.target.value)} aria-label="What this key can reach" disabled={!createCheck.ok || banned}
-          className="h-10 rounded-full border border-glass-border bg-transparent px-4 text-sm text-foreground">
-          <option value="" className="bg-background">All buckets</option>
-          {buckets.map(bucket => <option key={bucket.id} value={bucket.id} className="bg-background">Only {bucket.name}</option>)}
-        </select>
+        <Select value={scope || ALL_BUCKETS} onValueChange={value => setScope(value === ALL_BUCKETS ? '' : value)} disabled={!createCheck.ok || banned}>
+          <SelectTrigger aria-label="What this key can reach" className="h-10 w-auto min-w-[170px] rounded-full border-glass-border bg-transparent px-4 text-sm"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_BUCKETS}>All buckets</SelectItem>
+            {buckets.map(bucket => <SelectItem key={bucket.id} value={bucket.id}>Only {bucket.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
         <Button type="submit" variant="crystal" disabled={!canSubmit} className="h-10 px-5 font-normal"><Plus />{creating ? 'Creating' : 'Create'}</Button>
       </div>
       <p id="key-hint" className="mt-2 text-xs text-muted-foreground">
