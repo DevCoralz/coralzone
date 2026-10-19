@@ -80,6 +80,6 @@ export default async function handler(req, res) {
   return sendJson(res, 200, {
     ok: true,
     message:
-      "Auth and Cloud storage tables (including quotas and bans) are ready. Now remove or change MIGRATION_SECRET in Vercel env vars.",
+      "Auth and Cloud storage tables (including quotas, bans and API keys) are ready. Now remove or change MIGRATION_SECRET in Vercel env vars.",
   });
 }

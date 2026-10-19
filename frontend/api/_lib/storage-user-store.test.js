@@ -92,7 +92,11 @@ test("overview gathers buckets, key totals and a short admin history", async () 
       { id: "b1", name: "photos", frozen_at: null, created_at: new Date("2026-02-01T00:00:00Z") },
       { id: "b2", name: "evidence", frozen_at: new Date(), created_at: new Date("2026-02-02T00:00:00Z") },
     ] },
-    { when: (s) => s.includes("FROM storage_api_keys"), rows: [{ total: "2", active: "1", requests: "900" }] },
+    { when: (s) => s.includes("COUNT(*) AS total"), rows: [{ total: "2", active: "1", requests: "900" }] },
+    { when: (s) => s.includes("k.key_prefix"), rows: [
+      { id: "k1", user_id: U1, bucket_id: "b1", name: "Website", key_prefix: "cz_live_ab12", last_used_at: new Date("2026-03-02T00:00:00Z"), request_count: "900", revoked_at: null, created_at: new Date("2026-02-03T00:00:00Z"), rate_limit_per_minute: 120, bucket_name: "photos" },
+      { id: "k2", user_id: U1, bucket_id: null, name: "Old", key_prefix: "cz_live_cd34", last_used_at: null, request_count: 0, revoked_at: new Date("2026-02-20T00:00:00Z"), created_at: new Date("2026-02-04T00:00:00Z"), rate_limit_per_minute: null, bucket_name: null },
+    ] },
     { when: (s) => s.includes("FROM admin_action_log"), rows: [
       { id: "l1", action: "cloud.user.controls.update", details: JSON.stringify({ changes: { banned: { from: false, to: true } } }), created_at: new Date("2026-03-01T00:00:00Z"), admin_email: "boss@x.com" },
     ] },
@@ -101,7 +105,13 @@ test("overview gathers buckets, key totals and a short admin history", async () 
   assert.equal(overview.user.name, "Ada");
   assert.equal(overview.banReason, "spam");
   assert.deepEqual(overview.buckets.map((b) => [b.name, b.frozen]), [["photos", false], ["evidence", true]]);
-  assert.deepEqual(overview.apiKeys, { total: 2, active: 1, requests: 900 });
+  assert.deepEqual({ ...overview.apiKeys, list: undefined }, { total: 2, active: 1, requests: 900, list: undefined });
+  assert.deepEqual(overview.apiKeys.list.map((k) => [k.name, k.prefix, k.bucketName, k.revoked, k.rateLimitPerMinute]), [
+    ["Website", "cz_live_ab12", "photos", false, 120],
+    ["Old", "cz_live_cd34", null, true, null],
+  ]);
+  // The list never carries a hash or a secret, whatever the row held.
+  assert.ok(!JSON.stringify(overview.apiKeys).includes("hash"));
   assert.deepEqual(overview.recentActions, [{ id: "l1", summary: "Banned the user", by: "boss@x.com", at: "2026-03-01T00:00:00.000Z" }]);
 });
 
@@ -112,10 +122,11 @@ test("overview of a user who does not exist is null, and the ban reason stays hi
   const { query } = recorder([
     { when: (s) => s.includes("WHERE u.id = ? LIMIT 1"), rows: [{ ...userRow, banned_at: null, ban_reason: "old note" }] },
     { when: (s) => s.includes("FROM storage_buckets"), rows: [] },
-    { when: (s) => s.includes("FROM storage_api_keys"), rows: [{ total: 0, active: 0, requests: 0 }] },
+    { when: (s) => s.includes("COUNT(*) AS total"), rows: [{ total: 0, active: 0, requests: 0 }] },
+    { when: (s) => s.includes("k.key_prefix"), rows: [] },
     { when: (s) => s.includes("FROM admin_action_log"), rows: [] },
   ]);
   const overview = await makeUserStore({ query }).adminGetUserOverview(U1);
   assert.equal(overview.banReason, null);
-  assert.deepEqual(overview.apiKeys, { total: 0, active: 0, requests: 0 });
+  assert.deepEqual(overview.apiKeys, { total: 0, active: 0, requests: 0, list: [] });
 });

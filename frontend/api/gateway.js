@@ -38,6 +38,10 @@ import adminCloudUserControls from "./_lib/handlers/admin-cloud-user-controls.js
 import cloudBuckets from "./_lib/handlers/cloud-buckets.js";
 import adminCloudBuckets from "./_lib/handlers/admin-cloud-buckets.js";
 import adminCloudUsers from "./_lib/handlers/admin-cloud-users.js";
+import cloudApiKeys from "./_lib/handlers/cloud-api-keys.js";
+import adminCloudApiKeys from "./_lib/handlers/admin-cloud-api-keys.js";
+import v1Usage from "./_lib/handlers/v1-usage.js";
+import v1Files from "./_lib/handlers/v1-files.js";
 
 // Keyed by "<METHOD> /path" — each handler still checks req.method itself
 // too (defense in depth / unit-testability), this table just decides
@@ -70,6 +74,14 @@ const routes = {
   "PUT /admin/cloud-buckets": adminCloudBuckets,
   "DELETE /admin/cloud-buckets": adminCloudBuckets,
   "GET /admin/cloud-users": adminCloudUsers,
+  "GET /cloud/api-keys": cloudApiKeys,
+  "POST /cloud/api-keys": cloudApiKeys,
+  "DELETE /cloud/api-keys": cloudApiKeys,
+  "GET /admin/cloud-api-keys": adminCloudApiKeys,
+  "PUT /admin/cloud-api-keys": adminCloudApiKeys,
+  // The public API, called with an X-API-Key header instead of a session.
+  "GET /v1/usage": v1Usage,
+  "GET /v1/files": v1Files,
 };
 
 // Recognizable messages from our own config-validation checks (missing

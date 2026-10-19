@@ -61,7 +61,8 @@ CREATE TABLE IF NOT EXISTS auth_rate_limits (
 -- ── Cloud storage ───────────────────────────────────────────────────────────
 -- Scaffolding for the admin Cloud storage build-out (buckets, API keys,
 -- billing). storage_buckets is live as of build step 4 (see
--- storage-bucket-store.js); API keys and billing are not read yet. storage_quotas is
+-- storage-bucket-store.js) and storage_api_keys as of step 6; billing is not
+-- read yet. storage_quotas is
 -- defaulted in code (see src/lib/storage-plans.ts) — they exist now so later
 -- steps are additive, not another migration. The actual file bytes/metadata
 -- live in the separate coralz-storage service's own `media` table; these
@@ -185,3 +186,20 @@ CREATE TABLE IF NOT EXISTS storage_user_bans (
   CONSTRAINT fk_storage_user_bans_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
   CONSTRAINT fk_storage_user_bans_admin FOREIGN KEY (banned_by) REFERENCES users (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ── Cloud API keys (build step 6) ───────────────────────────────────────────
+-- storage_api_keys is now read and written (see storage-apikey-store.js). Only
+-- the SHA-256 of a key is stored, never the key. rate_limit_per_minute is an
+-- admin override: NULL = follow the plan's default. MySQL has no
+-- ADD COLUMN IF NOT EXISTS, so the column is added only when it is missing,
+-- which keeps this file safe to run any number of times.
+SET @has_rate_limit := (
+  SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'storage_api_keys' AND COLUMN_NAME = 'rate_limit_per_minute'
+);
+SET @add_rate_limit := IF(@has_rate_limit = 0,
+  'ALTER TABLE storage_api_keys ADD COLUMN rate_limit_per_minute INT UNSIGNED NULL',
+  'SELECT 1');
+PREPARE add_rate_limit_stmt FROM @add_rate_limit;
+EXECUTE add_rate_limit_stmt;
+DEALLOCATE PREPARE add_rate_limit_stmt;

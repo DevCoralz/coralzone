@@ -9,9 +9,11 @@ import { escapeLike } from "./storage-bucket-schema.js";
 import { isUuid } from "./storage-quota-schema.js";
 import { toEntitlement } from "./storage-entitlement.js";
 import { summarizeAction } from "./storage-user-schema.js";
+import { KEY_COLUMNS, toApiKey } from "./storage-apikey-shape.js";
 
 const iso = (value) => (value ? new Date(value).toISOString() : null);
 const ACTIONS_SHOWN = 10;
+const KEYS_SHOWN = 50;
 
 const BASE_SELECT = `
   SELECT u.id, u.name, u.email, u.created_at,
@@ -81,7 +83,7 @@ export function makeUserStore({ query }) {
     const row = found[0];
     if (!row) return null;
 
-    const [buckets, keys, actions] = await Promise.all([
+    const [buckets, keys, keyList, actions] = await Promise.all([
       query(
         "SELECT id, name, frozen_at, created_at FROM storage_buckets WHERE user_id = ? ORDER BY created_at ASC, id ASC",
         [userId],
@@ -90,6 +92,12 @@ export function makeUserStore({ query }) {
         `SELECT COUNT(*) AS total, COALESCE(SUM(revoked_at IS NULL), 0) AS active, COALESCE(SUM(request_count), 0) AS requests
          FROM storage_api_keys WHERE user_id = ?`,
         [userId],
+      ),
+      query(
+        `SELECT ${KEY_COLUMNS}
+         FROM storage_api_keys k LEFT JOIN storage_buckets b ON b.id = k.bucket_id
+         WHERE k.user_id = ? ORDER BY k.created_at DESC, k.id ASC LIMIT ?`,
+        [userId, KEYS_SHOWN],
       ),
       query(
         `SELECT l.id, l.action, l.details, l.created_at, a.email AS admin_email
@@ -110,6 +118,7 @@ export function makeUserStore({ query }) {
         total: Number(keys[0]?.total ?? 0),
         active: Number(keys[0]?.active ?? 0),
         requests: Number(keys[0]?.requests ?? 0),
+        list: keyList.map(toApiKey),
       },
       recentActions: actions.map((a) => ({
         id: a.id,

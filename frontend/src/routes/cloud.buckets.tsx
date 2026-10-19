@@ -181,7 +181,7 @@ function Page() {
           <AlertDialogDescription>
             {toDelete && toDelete.files > 0
               ? `It still holds ${toDelete.files} file${toDelete.files === 1 ? '' : 's'}. Delete those from Storage first; a bucket can only be deleted when it is empty.`
-              : 'The bucket is empty, so no files are lost. This cannot be undone.'}
+              : 'The bucket is empty, so no files are lost. API keys limited to this bucket are revoked. This cannot be undone.'}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

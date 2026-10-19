@@ -6,6 +6,7 @@ import { AdminCloudHeader } from '@/components/admin-cloud-header';
 import { AdminCloudUserTabs } from '@/components/admin-cloud-user-tabs';
 import { formatBytes, formatCount, formatDateTime } from '@/lib/format';
 import { formatPercent } from '@/lib/storage-buckets';
+import { describeLastUsed, describeRequests, describeScope, maskedKey } from '@/lib/storage-apikeys';
 import { bucketLabel, displayName } from '@/lib/storage-users';
 import { adminGetCloudUserOverview, type AdminUserOverviewResult } from '@/lib/storage-users.functions';
 
@@ -94,7 +95,7 @@ export function AdminCloudUserDetail({ userId }: { userId: string }) {
             <p className="mt-4 text-xs text-muted-foreground">API keys</p>
             <p className="mt-1 text-2xl font-normal">{overview.apiKeys.total === 0 ? 'None yet' : `${formatCount(overview.apiKeys.active)} active`}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {overview.apiKeys.total === 0 ? 'Request counts start with API keys' : `${formatCount(overview.apiKeys.requests)} request${overview.apiKeys.requests === 1 ? '' : 's'} in total`}
+              {overview.apiKeys.total === 0 ? 'Make a key to start counting' : `${formatCount(overview.apiKeys.requests)} request${overview.apiKeys.requests === 1 ? '' : 's'} in total`}
             </p>
           </div>
         </div>
@@ -130,6 +131,30 @@ export function AdminCloudUserDetail({ userId }: { userId: string }) {
                   </p>
                 </div>
               </li>}
+            </ul>}
+        </section>
+
+        <section className="dashboard-panel overflow-hidden" aria-label="API keys">
+          <div className="flex items-center justify-between border-b border-glass-border p-5">
+            <h3 className="font-display text-lg font-normal">API keys</h3>
+            <p className="text-xs text-muted-foreground">{overview.apiKeys.total === 0 ? 'None' : `${formatCount(overview.apiKeys.active)} active of ${formatCount(overview.apiKeys.total)}`}</p>
+          </div>
+          {overview.apiKeys.list.length === 0 ? <p className="p-6 text-sm text-muted-foreground">This user has not made an API key.</p>
+            : <ul className="divide-y divide-glass-border">
+              {overview.apiKeys.list.map(key => (
+                <li key={key.id}>
+                  <Link to="/admin/cloud/api-keys/$keyId" params={{ keyId: key.id }} className={`admin-row flex items-center gap-4 p-4 sm:px-6 ${key.revoked ? 'opacity-60' : ''}`}>
+                    <span className="dashboard-icon flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"><KeyRound size={16} /></span>
+                    <div className="min-w-0 flex-1">
+                      <p className="flex items-center gap-2 text-sm"><span className="truncate">{key.name}</span>
+                        {key.revoked && <span className="shrink-0 rounded-full border border-glass-border px-2 py-0.5 text-[10px] text-muted-foreground">Revoked</span>}
+                      </p>
+                      <p className="mt-1 truncate font-mono text-xs text-muted-foreground">{maskedKey(key.prefix)}</p>
+                      <p className="mt-1 truncate text-xs text-muted-foreground">{describeScope(key)} · {describeLastUsed(key)} · {describeRequests(key.requests)}</p>
+                    </div>
+                  </Link>
+                </li>
+              ))}
             </ul>}
         </section>
 

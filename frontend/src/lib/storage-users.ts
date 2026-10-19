@@ -7,6 +7,7 @@ import { parseEntitlement, resolveUserQuota, type BlockReason, type UserEntitlem
 import { bucketLimitFor, isNearlyFull, ownerFullness, type Bucket, type BucketUsage } from './storage-buckets';
 import type { EffectiveStorageSettings } from './storage-settings';
 import { formatBytes } from './format';
+import { parseApiKeys, type ApiKey } from './storage-apikeys';
 
 export const ADMIN_USER_PAGE_SIZE = 25;
 
@@ -123,6 +124,8 @@ export interface ApiKeySummary {
   total: number;
   active: number;
   requests: number;
+  // The person's newest keys (never their secrets), for the overview page.
+  list: ApiKey[];
 }
 
 export interface UserAction {
@@ -164,7 +167,7 @@ export function parseUserOverview(value: unknown): RawUserOverview | null {
     entitlement,
     banReason: typeof value.banReason === 'string' ? value.banReason : null,
     buckets,
-    apiKeys: { total: asCount(keys.total), active: asCount(keys.active), requests: asCount(keys.requests) },
+    apiKeys: { total: asCount(keys.total), active: asCount(keys.active), requests: asCount(keys.requests), list: parseApiKeys(keys.list) },
     recentActions: actions,
   };
 }

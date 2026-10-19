@@ -30,7 +30,7 @@ const connection = await mysql.createConnection(parseDatabaseUrl(process.env.DAT
 try {
   console.log("Applying schema...");
   await connection.query(sql);
-  console.log("Done — users, email_verification_codes, sessions, auth_rate_limits are ready.");
+  console.log("Done: users, sessions, rate limits and the Cloud storage tables are ready.");
 } finally {
   await connection.end();
 }

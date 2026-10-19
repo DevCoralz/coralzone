@@ -91,7 +91,7 @@ describe('overview', () => {
     user: { id: 'u1', name: 'Ada', email: 'ada@x.com', createdAt: '2026-01-01T00:00:00.000Z' },
     entitlement, banReason: null,
     buckets: [{ id: 'b1', name: 'photos', frozen: false, createdAt: null }, { id: 'b2', name: 'docs', frozen: true, createdAt: null }],
-    apiKeys: { total: 2, active: 1, requests: 30 },
+    apiKeys: { total: 2, active: 1, requests: 30, list: [{ id: 'k1', name: 'Site', prefix: 'cz_live_ab12', revoked: false, requests: 30 }, { nope: true }] },
     recentActions: [{ id: 'l1', summary: 'Froze uploads', by: 'boss@x.com', at: null }],
     ...over,
   });
@@ -100,6 +100,7 @@ describe('overview', () => {
     expect(parsed?.buckets.length).toBe(1);
     expect(parsed?.recentActions.length).toBe(1);
     expect(parsed?.recentActions[0].summary.length).toBe(140);
+    expect(parsed?.apiKeys.list.length).toBe(1);
     expect(parseUserOverview({})).toBeNull();
     expect(parseUserOverview(overview({ entitlement: null }))).toBeNull();
   });

@@ -34,6 +34,8 @@ import { Route as AdminCloudUsersUserIdIndexRouteImport } from './routes/admin.c
 import { Route as AdminCloudUsersUserIdControlsRouteImport } from './routes/admin.cloud.users.$userId.controls'
 import { Route as AdminCloudFilesRouteImport } from './routes/admin.cloud.files'
 import { Route as AdminCloudApiKeysRouteImport } from './routes/admin.cloud.api-keys'
+import { Route as AdminCloudApiKeysIndexRouteImport } from './routes/admin.cloud.api-keys.index'
+import { Route as AdminCloudApiKeysKeyIdRouteImport } from './routes/admin.cloud.api-keys.$keyId'
 import { Route as AdminCloudBillingRouteImport } from './routes/admin.cloud.billing'
 import { Route as AdminCloudSettingsRouteImport } from './routes/admin.cloud.settings'
 import { Route as AdminPaymentsRouteImport } from './routes/admin.payments'
@@ -176,6 +178,16 @@ const AdminCloudApiKeysRoute = AdminCloudApiKeysRouteImport.update({
   path: '/api-keys',
   getParentRoute: () => AdminCloudRoute,
 } as any)
+const AdminCloudApiKeysIndexRoute = AdminCloudApiKeysIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminCloudApiKeysRoute,
+} as any)
+const AdminCloudApiKeysKeyIdRoute = AdminCloudApiKeysKeyIdRouteImport.update({
+  id: '/$keyId',
+  path: '/$keyId',
+  getParentRoute: () => AdminCloudApiKeysRoute,
+} as any)
 const AdminCloudBillingRoute = AdminCloudBillingRouteImport.update({
   id: '/billing',
   path: '/billing',
@@ -266,7 +278,8 @@ export interface FileRoutesByFullPath {
   '/admin/cloud/users/$userId': typeof AdminCloudUsersUserIdRouteWithChildren
   '/admin/cloud/users/$userId/controls': typeof AdminCloudUsersUserIdControlsRoute
   '/admin/cloud/files': typeof AdminCloudFilesRoute
-  '/admin/cloud/api-keys': typeof AdminCloudApiKeysRoute
+  '/admin/cloud/api-keys': typeof AdminCloudApiKeysRouteWithChildren
+  '/admin/cloud/api-keys/$keyId': typeof AdminCloudApiKeysKeyIdRoute
   '/admin/cloud/billing': typeof AdminCloudBillingRoute
   '/admin/cloud/settings': typeof AdminCloudSettingsRoute
   '/admin/payments': typeof AdminPaymentsRoute
@@ -302,7 +315,8 @@ export interface FileRoutesByTo {
   '/admin/cloud/users/$userId': typeof AdminCloudUsersUserIdIndexRoute
   '/admin/cloud/users/$userId/controls': typeof AdminCloudUsersUserIdControlsRoute
   '/admin/cloud/files': typeof AdminCloudFilesRoute
-  '/admin/cloud/api-keys': typeof AdminCloudApiKeysRoute
+  '/admin/cloud/api-keys': typeof AdminCloudApiKeysIndexRoute
+  '/admin/cloud/api-keys/$keyId': typeof AdminCloudApiKeysKeyIdRoute
   '/admin/cloud/billing': typeof AdminCloudBillingRoute
   '/admin/cloud/settings': typeof AdminCloudSettingsRoute
   '/admin/payments': typeof AdminPaymentsRoute
@@ -344,7 +358,9 @@ export interface FileRoutesById {
   '/admin/cloud/users/$userId/': typeof AdminCloudUsersUserIdIndexRoute
   '/admin/cloud/users/$userId/controls': typeof AdminCloudUsersUserIdControlsRoute
   '/admin/cloud/files': typeof AdminCloudFilesRoute
-  '/admin/cloud/api-keys': typeof AdminCloudApiKeysRoute
+  '/admin/cloud/api-keys': typeof AdminCloudApiKeysRouteWithChildren
+  '/admin/cloud/api-keys/': typeof AdminCloudApiKeysIndexRoute
+  '/admin/cloud/api-keys/$keyId': typeof AdminCloudApiKeysKeyIdRoute
   '/admin/cloud/billing': typeof AdminCloudBillingRoute
   '/admin/cloud/settings': typeof AdminCloudSettingsRoute
   '/admin/payments': typeof AdminPaymentsRoute
@@ -392,6 +408,10 @@ export interface FileRouteTypes {
     | '/admin/cloud/users/$userId/controls'
     | '/admin/cloud/files'
     | '/admin/cloud/api-keys'
+    | '/admin/cloud/api-keys/'
+    | '/admin/cloud/api-keys/$keyId'
+    | '/admin/cloud/api-keys/$keyId'
+    | '/admin/cloud/api-keys/$keyId'
     | '/admin/cloud/billing'
     | '/admin/cloud/settings'
     | '/admin/payments'
@@ -679,6 +699,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCloudApiKeysRouteImport
       parentRoute: typeof AdminCloudRoute
     }
+    '/admin/cloud/api-keys/': {
+      id: '/admin/cloud/api-keys/'
+      path: '/'
+      fullPath: '/admin/cloud/api-keys/'
+      preLoaderRoute: typeof AdminCloudApiKeysIndexRouteImport
+      parentRoute: typeof AdminCloudApiKeysRoute
+    }
+    '/admin/cloud/api-keys/$keyId': {
+      id: '/admin/cloud/api-keys/$keyId'
+      path: '/$keyId'
+      fullPath: '/admin/cloud/api-keys/$keyId'
+      preLoaderRoute: typeof AdminCloudApiKeysKeyIdRouteImport
+      parentRoute: typeof AdminCloudApiKeysRoute
+    }
     '/admin/cloud/billing': {
       id: '/admin/cloud/billing'
       path: '/billing'
@@ -847,12 +881,25 @@ const AdminCloudUsersRouteWithChildren = AdminCloudUsersRoute._addFileChildren(
   AdminCloudUsersRouteChildren,
 )
 
+interface AdminCloudApiKeysRouteChildren {
+  AdminCloudApiKeysIndexRoute: typeof AdminCloudApiKeysIndexRoute
+  AdminCloudApiKeysKeyIdRoute: typeof AdminCloudApiKeysKeyIdRoute
+}
+
+const AdminCloudApiKeysRouteChildren: AdminCloudApiKeysRouteChildren = {
+  AdminCloudApiKeysIndexRoute: AdminCloudApiKeysIndexRoute,
+  AdminCloudApiKeysKeyIdRoute: AdminCloudApiKeysKeyIdRoute,
+}
+
+const AdminCloudApiKeysRouteWithChildren =
+  AdminCloudApiKeysRoute._addFileChildren(AdminCloudApiKeysRouteChildren)
+
 interface AdminCloudRouteChildren {
   AdminCloudIndexRoute: typeof AdminCloudIndexRoute
   AdminCloudBucketsRoute: typeof AdminCloudBucketsRouteWithChildren
   AdminCloudUsersRoute: typeof AdminCloudUsersRouteWithChildren
   AdminCloudFilesRoute: typeof AdminCloudFilesRoute
-  AdminCloudApiKeysRoute: typeof AdminCloudApiKeysRoute
+  AdminCloudApiKeysRoute: typeof AdminCloudApiKeysRouteWithChildren
   AdminCloudBillingRoute: typeof AdminCloudBillingRoute
   AdminCloudSettingsRoute: typeof AdminCloudSettingsRoute
 }
@@ -862,7 +909,7 @@ const AdminCloudRouteChildren: AdminCloudRouteChildren = {
   AdminCloudBucketsRoute: AdminCloudBucketsRouteWithChildren,
   AdminCloudUsersRoute: AdminCloudUsersRouteWithChildren,
   AdminCloudFilesRoute: AdminCloudFilesRoute,
-  AdminCloudApiKeysRoute: AdminCloudApiKeysRoute,
+  AdminCloudApiKeysRoute: AdminCloudApiKeysRouteWithChildren,
   AdminCloudBillingRoute: AdminCloudBillingRoute,
   AdminCloudSettingsRoute: AdminCloudSettingsRoute,
 }

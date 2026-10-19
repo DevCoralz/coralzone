@@ -30,7 +30,7 @@ export const CLOUD_ADMIN_SECTIONS: readonly CloudAdminSection[] = [
   { to: '/admin/cloud/buckets', label: 'Buckets', description: 'Every bucket: owner, size, file count. Freeze or delete.', icon: Boxes, status: 'live', step: 4 },
   { to: '/admin/cloud/users', label: 'Users & usage', description: 'Search everyone, see their space, buckets and files, cap or ban them.', icon: Users, status: 'live', step: 5 },
   { to: '/admin/cloud/files', label: 'Files & abuse', description: 'Browse all files, remove abuse, block file types.', icon: FileWarning, status: 'live', step: 7 },
-  { to: '/admin/cloud/api-keys', label: 'API keys', description: 'Keys across all users: last used, revoke, rate-limit.', icon: KeyRound, status: 'planned', step: 6 },
+  { to: '/admin/cloud/api-keys', label: 'API keys', description: 'Keys across all users: last used, requests, revoke or slow a key.', icon: KeyRound, status: 'live', step: 6 },
   { to: '/admin/cloud/billing', label: 'Billing & extra storage', description: 'Extra-storage purchases, manual adjustments, failed payments.', icon: Receipt, status: 'planned', step: 8 },
   { to: '/admin/cloud/settings', label: 'System settings', description: 'Global limits, plan quotas, file types, maintenance mode.', icon: Settings2, status: 'live', step: 2 },
 ];

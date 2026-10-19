@@ -30,6 +30,13 @@ function toBucket(row) {
 // ({ query, withTransaction }), so the rules above can be tested with a fake
 // and the real thing is wired up in storage-bucket-core.js.
 export function makeBucketStore({ query, withTransaction }) {
+  // An API key limited to a bucket must not outlive it. The table's foreign key
+  // would turn such a key into an all buckets key when the bucket row goes, so
+  // those keys are revoked first, inside the same transaction.
+  async function revokeKeysOf(conn, bucketId) {
+    await conn.query("UPDATE storage_api_keys SET revoked_at = NOW() WHERE bucket_id = ? AND revoked_at IS NULL", [bucketId]);
+  }
+
   // ── The signed-in user's own buckets ─────────────────────────────────────────
 
   async function listUserBuckets(userId) {
@@ -113,6 +120,7 @@ export function makeBucketStore({ query, withTransaction }) {
       );
       if (!found[0]) return false;
       if (found[0].frozen_at != null) throw userFacing("This bucket is frozen, so it can't be deleted. Contact support.");
+      await revokeKeysOf(conn, bucketId);
       await conn.query("DELETE FROM storage_buckets WHERE id = ? AND user_id = ?", [bucketId, userId]);
       return true;
     });
@@ -205,6 +213,7 @@ export function makeBucketStore({ query, withTransaction }) {
       );
       const row = found[0];
       if (!row) return false;
+      await revokeKeysOf(conn, bucketId);
       await conn.query("DELETE FROM storage_buckets WHERE id = ?", [bucketId]);
       await audit(conn, adminUserId, "cloud.bucket.delete", bucketId, { name: row.name, ownerId: row.user_id, filesDeleted });
       return true;

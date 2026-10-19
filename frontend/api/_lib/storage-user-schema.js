@@ -4,6 +4,7 @@
 // test suites pin them together.
 import { ADMIN_LIST_LIMIT, ADMIN_SEARCH_MAX } from "./storage-bucket-schema.js";
 import { PLAN_IDS } from "./storage-settings-schema.js";
+import { summarizeKeyAction } from "./storage-apikey-schema.js";
 
 export const USER_STATUSES = ["all", "frozen", "banned"];
 export const USER_PLAN_FILTERS = ["all", ...PLAN_IDS];
@@ -44,6 +45,8 @@ function sentence(parts) {
 // One short line for an audit log row. The raw details are never sent to the
 // page: only this summary is, so a long or odd log entry cannot flood the UI.
 export function summarizeAction(action, detailsText) {
+  const keyLine = summarizeKeyAction(action, detailsText);
+  if (keyLine) return keyLine;
   if (action !== "cloud.user.controls.update") {
     return String(action ?? "").replace(/[^\w. ]/g, "").slice(0, SUMMARY_MAX) || "Admin action";
   }

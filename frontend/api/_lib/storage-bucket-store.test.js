@@ -16,6 +16,7 @@ function fakeDb() {
     quotas: new Map(), // userId -> plan
     bans: new Set(),
     buckets: [],
+    keys: [], // { id, bucket_id, revoked }
     log: [],
     clock: 0,
   };
@@ -56,6 +57,10 @@ function fakeDb() {
       state.buckets = state.buckets.filter((b) => b.id !== p[0]);
       return [];
     }
+    if (has(sql, "UPDATE storage_api_keys SET revoked_at = NOW() WHERE bucket_id = ? AND revoked_at IS NULL")) {
+      for (const k of state.keys) if (k.bucket_id === p[0]) k.revoked = true;
+      return [];
+    }
     if (has(sql, "INSERT INTO admin_action_log")) {
       state.log.push({ admin: p[1], action: p[2], target: p[3], details: JSON.parse(p[4]) });
       return [];
@@ -67,11 +72,12 @@ function fakeDb() {
     query: async (sql, params = []) => run(sql, params),
     // Like the real one: roll back everything if the callback throws.
     withTransaction: async (fn) => {
-      const snapshot = { buckets: structuredClone(state.buckets), log: structuredClone(state.log) };
+      const snapshot = { buckets: structuredClone(state.buckets), keys: structuredClone(state.keys), log: structuredClone(state.log) };
       try {
         return await fn({ query: async (sql, params = []) => [await run(sql, params)] });
       } catch (error) {
         state.buckets = snapshot.buckets;
+        state.keys = snapshot.keys;
         state.log = snapshot.log;
         throw error;
       }
@@ -202,4 +208,26 @@ test("a refused create leaves nothing behind (transaction rolls back)", async ()
   await store.createUserBucket(U1, "one");
   await assert.rejects(store.createUserBucket(U1, "two"));
   assert.equal(state.buckets.length, 1);
+});
+
+test("deleting a bucket revokes the API keys limited to it, so they cannot widen to every bucket", async () => {
+  const { store, state } = fakeDb();
+  const a = await store.createUserBucket(U1, "alpha");
+  state.keys.push({ id: "k1", bucket_id: a.id, revoked: false }, { id: "k2", bucket_id: "other-bucket", revoked: false }, { id: "k3", bucket_id: null, revoked: false });
+  assert.equal(await store.deleteUserBucket(U1, a.id), true);
+  assert.deepEqual(state.keys.map((k) => [k.id, k.revoked]), [["k1", true], ["k2", false], ["k3", false]]);
+
+  const b = await store.createUserBucket(U1, "alpha");
+  state.keys.push({ id: "k4", bucket_id: b.id, revoked: false });
+  assert.equal(await store.adminDeleteBucket(b.id, 0, ADMIN), true);
+  assert.equal(state.keys.find((k) => k.id === "k4").revoked, true);
+});
+
+test("a refused bucket delete leaves its keys alone (frozen bucket)", async () => {
+  const { store, state } = fakeDb();
+  const b = await store.createUserBucket(U1, "evidence");
+  state.keys.push({ id: "k1", bucket_id: b.id, revoked: false });
+  await store.adminSetBucketFrozen(b.id, true, ADMIN);
+  await assert.rejects(store.deleteUserBucket(U1, b.id));
+  assert.equal(state.keys[0].revoked, false);
 });
