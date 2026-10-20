@@ -22,7 +22,11 @@ export const STORAGE_SETTINGS_LIMITS = {
   planBytesQuota: { min: 1 * GB, max: 100 * 1024 * GB },
   planMaxUploadBytes: { min: 1 * MB, max: 4 * GB },
   maintenanceMessageMax: 200,
+  blockedMimeTypesMax: 64,
 } as const;
+
+// Same shape the gateway accepts (api/_lib/storage-settings-schema.js).
+export const MIME_TYPE_RE = /^[a-z0-9][a-z0-9.+-]{0,60}\/[a-z0-9][a-z0-9.+-]{0,60}$/;
 
 export type FileGroupId = 'images' | 'video' | 'audio' | 'documents' | 'archives' | 'text_data' | 'other';
 
@@ -74,6 +78,7 @@ export interface StorageSettingsOverrides {
   globalMaxUploadBytes?: number;
   extraStoragePriceNgn?: number;
   allowedFileGroups?: FileGroupId[];
+  blockedMimeTypes?: string[];
   planQuotas?: Record<StoragePlanId, PlanLimits>;
   maintenance?: MaintenanceSetting;
 }
@@ -83,6 +88,8 @@ export interface EffectiveStorageSettings {
   globalMaxUploadBytes: number;
   extraStoragePriceNgn: number;
   allowedFileGroups: FileGroupId[];
+  // Individual types switched off by an admin, on top of the groups.
+  blockedMimeTypes: string[];
   planQuotas: Record<StoragePlanId, PlanLimits>;
   maintenance: MaintenanceSetting;
 }
@@ -93,6 +100,7 @@ export const DEFAULT_STORAGE_SETTINGS: EffectiveStorageSettings = {
   globalMaxUploadBytes: STORAGE_PLANS.scale.maxUploadBytes,
   extraStoragePriceNgn: EXTRA_STORAGE_NGN_PER_10GB,
   allowedFileGroups: [...ALL_FILE_GROUP_IDS],
+  blockedMimeTypes: [],
   planQuotas: {
     starter: { bytesQuota: STORAGE_PLANS.starter.bytesQuota, maxUploadBytes: STORAGE_PLANS.starter.maxUploadBytes },
     pro: { bytesQuota: STORAGE_PLANS.pro.bytesQuota, maxUploadBytes: STORAGE_PLANS.pro.maxUploadBytes },
@@ -119,6 +127,7 @@ export function resolveStorageSettings(raw: unknown): EffectiveStorageSettings {
     globalMaxUploadBytes: DEFAULT_STORAGE_SETTINGS.globalMaxUploadBytes,
     extraStoragePriceNgn: DEFAULT_STORAGE_SETTINGS.extraStoragePriceNgn,
     allowedFileGroups: [...DEFAULT_STORAGE_SETTINGS.allowedFileGroups],
+    blockedMimeTypes: [],
     planQuotas: {
       starter: { ...DEFAULT_STORAGE_SETTINGS.planQuotas.starter },
       pro: { ...DEFAULT_STORAGE_SETTINGS.planQuotas.pro },
@@ -137,6 +146,10 @@ export function resolveStorageSettings(raw: unknown): EffectiveStorageSettings {
   if (Array.isArray(raw.allowedFileGroups)) {
     const groups = ALL_FILE_GROUP_IDS.filter(id => (raw.allowedFileGroups as unknown[]).includes(id));
     if (groups.length > 0) result.allowedFileGroups = [...groups];
+  }
+  if (Array.isArray(raw.blockedMimeTypes)) {
+    const blocked = (raw.blockedMimeTypes as unknown[]).filter((item): item is string => typeof item === 'string' && MIME_TYPE_RE.test(item.toLowerCase()));
+    result.blockedMimeTypes = [...new Set(blocked.map(item => item.toLowerCase()))].sort().slice(0, STORAGE_SETTINGS_LIMITS.blockedMimeTypesMax);
   }
   if (isObject(raw.planQuotas)) {
     for (const id of PLAN_IDS) {
@@ -170,10 +183,30 @@ export function effectivePlan(id: StoragePlanId, settings: EffectiveStorageSetti
   };
 }
 
-export function allowedMimeTypes(groups: readonly FileGroupId[]): string[] {
+// The types an upload may be, as the storage service wants them: the allowed
+// groups, minus any single type an admin has blocked. Empty means every type
+// is off, and the caller must refuse the upload (the service would reject an
+// empty list).
+export function allowedMimeTypes(groups: readonly FileGroupId[], blocked: readonly string[] = []): string[] {
   const wanted = new Set(groups);
+  const off = new Set(blocked);
   const mimes = FILE_GROUPS.filter(group => wanted.has(group.id)).flatMap(group => group.mimeTypes);
-  return [...new Set(mimes)];
+  return [...new Set(mimes)].filter(mime => !off.has(mime));
+}
+
+// Every type this platform can store, with the group it belongs to, for pages
+// that list them (the blocked types page).
+export function knownMimeTypes(): Array<{ mimeType: string; groupId: FileGroupId; groupLabel: string }> {
+  const seen = new Set<string>();
+  const out: Array<{ mimeType: string; groupId: FileGroupId; groupLabel: string }> = [];
+  for (const group of FILE_GROUPS) {
+    for (const mimeType of group.mimeTypes) {
+      if (seen.has(mimeType)) continue;
+      seen.add(mimeType);
+      out.push({ mimeType, groupId: group.id, groupLabel: group.label });
+    }
+  }
+  return out;
 }
 
 export function maintenanceMessage(settings: EffectiveStorageSettings): string {

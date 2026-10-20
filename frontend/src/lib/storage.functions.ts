@@ -200,6 +200,11 @@ export const startMyUpload = createServerFn({ method: "POST" })
       if (!bucket.ok) return { configured: true, ok: false, error: bucket.error };
     }
 
+    // Allowed groups minus any single type an admin blocked. If nothing is left,
+    // say so plainly: the storage service would only answer with a vague error.
+    const allowedMime = allowedMimeTypes(settings.allowedFileGroups, settings.blockedMimeTypes);
+    if (allowedMime.length === 0) return { configured: true, ok: false, error: "Uploads are switched off for every file type right now." };
+
     // The storage service checks the same limits again, and also counts the
     // uploads this user already has open, so two at once cannot overfill the quota.
     const result = await storageFetch<Record<string, unknown>>(`${STORAGE_PREFIX}/uploads`, {
@@ -211,7 +216,7 @@ export const startMyUpload = createServerFn({ method: "POST" })
         size: data.size,
         max_bytes: quota.maxUploadBytes,
         quota_bytes: quota.bytesQuota,
-        allowed_mime: allowedMimeTypes(settings.allowedFileGroups),
+        allowed_mime: allowedMime,
         bucket_id: data.bucketId,
       }),
     });
@@ -312,33 +317,5 @@ export const adminGetStorageUsage = createServerFn({ method: "GET" }).handler(as
   return mapUsage(result, 0, null); // platform-wide total has no single plan quota to compare against
 });
 
-export const adminListStorageFiles = createServerFn({ method: "GET" }).handler(async (): Promise<{ configured: boolean; files: StorageFile[] }> => {
-  await requireAdmin();
-  const result = await storageFetch<{ files: Array<Record<string, unknown>> }>(`${STORAGE_PREFIX}/files?limit=50`);
-  const rows = (result.data?.files ?? []).map(mapFileRow);
-  return { configured: result.configured && result.ok, files: rows };
-});
-
-export const adminDeleteStorageFile = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => {
-    if (!input || typeof input !== "object") throw new Error("A file key and owner are required");
-    const { key, ownerId } = input as { key?: unknown; ownerId?: unknown };
-    if (typeof key !== "string" || !key.trim()) throw new Error("A file key is required");
-    if (typeof ownerId !== "string" || !ownerId.trim()) throw new Error("An owner id is required");
-    return { key: key.trim(), ownerId: ownerId.trim() };
-  })
-  .handler(async ({ data }): Promise<{ configured: boolean; ok: boolean }> => {
-    await requireAdmin();
-    // The storage service requires the file's own stored owner_id to match
-    // on delete, regardless of who's asking — admin must pass the file's
-    // real owner (surfaced on every row from adminListStorageFiles), not
-    // its own identity. There's no bypass for "any owner" by design; adding
-    // one means touching coralz-storage, held for when it's actually needed.
-    const form = new FormData();
-    form.set("owner_id", data.ownerId);
-    const result = await storageFetch<unknown>(`${STORAGE_PREFIX}/media/${encodeURIComponent(data.key)}`, {
-      method: "DELETE",
-      body: form,
-    });
-    return { configured: result.configured, ok: result.ok };
-  });
+// Listing and removing files as an admin moved to storage-files.functions.ts in build
+// step 7: it adds search, filters, flags and an admin log entry for every removal.

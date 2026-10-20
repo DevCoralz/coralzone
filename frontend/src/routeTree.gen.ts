@@ -33,6 +33,9 @@ import { Route as AdminCloudUsersUserIdRouteImport } from './routes/admin.cloud.
 import { Route as AdminCloudUsersUserIdIndexRouteImport } from './routes/admin.cloud.users.$userId.index'
 import { Route as AdminCloudUsersUserIdControlsRouteImport } from './routes/admin.cloud.users.$userId.controls'
 import { Route as AdminCloudFilesRouteImport } from './routes/admin.cloud.files'
+import { Route as AdminCloudFilesIndexRouteImport } from './routes/admin.cloud.files.index'
+import { Route as AdminCloudFilesFileIdRouteImport } from './routes/admin.cloud.files.$fileId'
+import { Route as AdminCloudFilesBlockedTypesRouteImport } from './routes/admin.cloud.files.blocked-types'
 import { Route as AdminCloudApiKeysRouteImport } from './routes/admin.cloud.api-keys'
 import { Route as AdminCloudApiKeysIndexRouteImport } from './routes/admin.cloud.api-keys.index'
 import { Route as AdminCloudApiKeysKeyIdRouteImport } from './routes/admin.cloud.api-keys.$keyId'
@@ -173,6 +176,22 @@ const AdminCloudFilesRoute = AdminCloudFilesRouteImport.update({
   path: '/files',
   getParentRoute: () => AdminCloudRoute,
 } as any)
+const AdminCloudFilesIndexRoute = AdminCloudFilesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminCloudFilesRoute,
+} as any)
+const AdminCloudFilesFileIdRoute = AdminCloudFilesFileIdRouteImport.update({
+  id: '/$fileId',
+  path: '/$fileId',
+  getParentRoute: () => AdminCloudFilesRoute,
+} as any)
+const AdminCloudFilesBlockedTypesRoute =
+  AdminCloudFilesBlockedTypesRouteImport.update({
+    id: '/blocked-types',
+    path: '/blocked-types',
+    getParentRoute: () => AdminCloudFilesRoute,
+  } as any)
 const AdminCloudApiKeysRoute = AdminCloudApiKeysRouteImport.update({
   id: '/api-keys',
   path: '/api-keys',
@@ -277,7 +296,9 @@ export interface FileRoutesByFullPath {
   '/admin/cloud/users': typeof AdminCloudUsersRouteWithChildren
   '/admin/cloud/users/$userId': typeof AdminCloudUsersUserIdRouteWithChildren
   '/admin/cloud/users/$userId/controls': typeof AdminCloudUsersUserIdControlsRoute
-  '/admin/cloud/files': typeof AdminCloudFilesRoute
+  '/admin/cloud/files': typeof AdminCloudFilesRouteWithChildren
+  '/admin/cloud/files/$fileId': typeof AdminCloudFilesFileIdRoute
+  '/admin/cloud/files/blocked-types': typeof AdminCloudFilesBlockedTypesRoute
   '/admin/cloud/api-keys': typeof AdminCloudApiKeysRouteWithChildren
   '/admin/cloud/api-keys/$keyId': typeof AdminCloudApiKeysKeyIdRoute
   '/admin/cloud/billing': typeof AdminCloudBillingRoute
@@ -314,7 +335,9 @@ export interface FileRoutesByTo {
   '/admin/cloud/users': typeof AdminCloudUsersIndexRoute
   '/admin/cloud/users/$userId': typeof AdminCloudUsersUserIdIndexRoute
   '/admin/cloud/users/$userId/controls': typeof AdminCloudUsersUserIdControlsRoute
-  '/admin/cloud/files': typeof AdminCloudFilesRoute
+  '/admin/cloud/files': typeof AdminCloudFilesIndexRoute
+  '/admin/cloud/files/$fileId': typeof AdminCloudFilesFileIdRoute
+  '/admin/cloud/files/blocked-types': typeof AdminCloudFilesBlockedTypesRoute
   '/admin/cloud/api-keys': typeof AdminCloudApiKeysIndexRoute
   '/admin/cloud/api-keys/$keyId': typeof AdminCloudApiKeysKeyIdRoute
   '/admin/cloud/billing': typeof AdminCloudBillingRoute
@@ -357,7 +380,10 @@ export interface FileRoutesById {
   '/admin/cloud/users/$userId': typeof AdminCloudUsersUserIdRouteWithChildren
   '/admin/cloud/users/$userId/': typeof AdminCloudUsersUserIdIndexRoute
   '/admin/cloud/users/$userId/controls': typeof AdminCloudUsersUserIdControlsRoute
-  '/admin/cloud/files': typeof AdminCloudFilesRoute
+  '/admin/cloud/files': typeof AdminCloudFilesRouteWithChildren
+  '/admin/cloud/files/': typeof AdminCloudFilesIndexRoute
+  '/admin/cloud/files/$fileId': typeof AdminCloudFilesFileIdRoute
+  '/admin/cloud/files/blocked-types': typeof AdminCloudFilesBlockedTypesRoute
   '/admin/cloud/api-keys': typeof AdminCloudApiKeysRouteWithChildren
   '/admin/cloud/api-keys/': typeof AdminCloudApiKeysIndexRoute
   '/admin/cloud/api-keys/$keyId': typeof AdminCloudApiKeysKeyIdRoute
@@ -407,6 +433,13 @@ export interface FileRouteTypes {
     | '/admin/cloud/users/$userId'
     | '/admin/cloud/users/$userId/controls'
     | '/admin/cloud/files'
+    | '/admin/cloud/files/'
+    | '/admin/cloud/files/$fileId'
+    | '/admin/cloud/files/blocked-types'
+    | '/admin/cloud/files/$fileId'
+    | '/admin/cloud/files/blocked-types'
+    | '/admin/cloud/files/$fileId'
+    | '/admin/cloud/files/blocked-types'
     | '/admin/cloud/api-keys'
     | '/admin/cloud/api-keys/'
     | '/admin/cloud/api-keys/$keyId'
@@ -692,6 +725,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCloudFilesRouteImport
       parentRoute: typeof AdminCloudRoute
     }
+    '/admin/cloud/files/': {
+      id: '/admin/cloud/files/'
+      path: '/'
+      fullPath: '/admin/cloud/files/'
+      preLoaderRoute: typeof AdminCloudFilesIndexRouteImport
+      parentRoute: typeof AdminCloudFilesRoute
+    }
+    '/admin/cloud/files/$fileId': {
+      id: '/admin/cloud/files/$fileId'
+      path: '/$fileId'
+      fullPath: '/admin/cloud/files/$fileId'
+      preLoaderRoute: typeof AdminCloudFilesFileIdRouteImport
+      parentRoute: typeof AdminCloudFilesRoute
+    }
+    '/admin/cloud/files/blocked-types': {
+      id: '/admin/cloud/files/blocked-types'
+      path: '/blocked-types'
+      fullPath: '/admin/cloud/files/blocked-types'
+      preLoaderRoute: typeof AdminCloudFilesBlockedTypesRouteImport
+      parentRoute: typeof AdminCloudFilesRoute
+    }
     '/admin/cloud/api-keys': {
       id: '/admin/cloud/api-keys'
       path: '/api-keys'
@@ -894,11 +948,27 @@ const AdminCloudApiKeysRouteChildren: AdminCloudApiKeysRouteChildren = {
 const AdminCloudApiKeysRouteWithChildren =
   AdminCloudApiKeysRoute._addFileChildren(AdminCloudApiKeysRouteChildren)
 
+interface AdminCloudFilesRouteChildren {
+  AdminCloudFilesIndexRoute: typeof AdminCloudFilesIndexRoute
+  AdminCloudFilesFileIdRoute: typeof AdminCloudFilesFileIdRoute
+  AdminCloudFilesBlockedTypesRoute: typeof AdminCloudFilesBlockedTypesRoute
+}
+
+const AdminCloudFilesRouteChildren: AdminCloudFilesRouteChildren = {
+  AdminCloudFilesIndexRoute: AdminCloudFilesIndexRoute,
+  AdminCloudFilesFileIdRoute: AdminCloudFilesFileIdRoute,
+  AdminCloudFilesBlockedTypesRoute: AdminCloudFilesBlockedTypesRoute,
+}
+
+const AdminCloudFilesRouteWithChildren = AdminCloudFilesRoute._addFileChildren(
+  AdminCloudFilesRouteChildren,
+)
+
 interface AdminCloudRouteChildren {
   AdminCloudIndexRoute: typeof AdminCloudIndexRoute
   AdminCloudBucketsRoute: typeof AdminCloudBucketsRouteWithChildren
   AdminCloudUsersRoute: typeof AdminCloudUsersRouteWithChildren
-  AdminCloudFilesRoute: typeof AdminCloudFilesRoute
+  AdminCloudFilesRoute: typeof AdminCloudFilesRouteWithChildren
   AdminCloudApiKeysRoute: typeof AdminCloudApiKeysRouteWithChildren
   AdminCloudBillingRoute: typeof AdminCloudBillingRoute
   AdminCloudSettingsRoute: typeof AdminCloudSettingsRoute
@@ -908,7 +978,7 @@ const AdminCloudRouteChildren: AdminCloudRouteChildren = {
   AdminCloudIndexRoute: AdminCloudIndexRoute,
   AdminCloudBucketsRoute: AdminCloudBucketsRouteWithChildren,
   AdminCloudUsersRoute: AdminCloudUsersRouteWithChildren,
-  AdminCloudFilesRoute: AdminCloudFilesRoute,
+  AdminCloudFilesRoute: AdminCloudFilesRouteWithChildren,
   AdminCloudApiKeysRoute: AdminCloudApiKeysRouteWithChildren,
   AdminCloudBillingRoute: AdminCloudBillingRoute,
   AdminCloudSettingsRoute: AdminCloudSettingsRoute,

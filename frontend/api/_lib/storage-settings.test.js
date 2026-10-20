@@ -76,3 +76,16 @@ test("patch: null resets a key; valid values are normalised", () => {
   assert.equal(r.patch.extraStoragePriceNgn, null);
   assert.deepEqual(r.patch.allowedFileGroups, ["images", "video"]);
 });
+
+test("blocked MIME types: lowercased, de-duplicated, sorted; empty is allowed; patterns and junk are refused", () => {
+  const ok = validateSettingValue("blockedMimeTypes", ["Application/ZIP", "application/zip", "image/png"]);
+  assert.deepEqual(ok, { ok: true, value: ["application/zip", "image/png"] });
+  assert.deepEqual(validateSettingValue("blockedMimeTypes", []), { ok: true, value: [] });
+  for (const bad of ["application/zip", null, {}, ["zip"], ["*/*"], ["image/*"], ["a/b/c"], ["x'/y"], [""], [5], ["application/zip; q=1"], ["image/png\n"]]) {
+    assert.equal(validateSettingValue("blockedMimeTypes", bad).ok, false, JSON.stringify(bad));
+  }
+  assert.equal(validateSettingValue("blockedMimeTypes", Array.from({ length: 65 }, (_, i) => `a/b${i}`)).ok, false);
+  assert.equal(validateSettingValue("blockedMimeTypes", Array.from({ length: 64 }, (_, i) => `a/b${i}`)).ok, true);
+  assert.equal(validateSettingsPatch({ blockedMimeTypes: ["application/zip"] }).ok, true);
+  assert.equal(validateSettingsPatch({ blockedMimeTypes: null }).patch.blockedMimeTypes, null);
+});

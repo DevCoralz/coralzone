@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   ALL_FILE_GROUP_IDS, DEFAULT_STORAGE_SETTINGS, STORAGE_SETTINGS_LIMITS, FILE_GROUPS,
-  resolveStorageSettings, effectivePlan, allowedMimeTypes, maintenanceMessage, DEFAULT_MAINTENANCE_MESSAGE,
+  resolveStorageSettings, effectivePlan, allowedMimeTypes, knownMimeTypes, maintenanceMessage, DEFAULT_MAINTENANCE_MESSAGE,
 } from './storage-settings';
 import { STORAGE_PLANS } from './storage-plans';
 
@@ -65,5 +65,33 @@ describe('storage settings', () => {
 
   it('maintenanceMessage falls back to the default text', () => {
     expect(maintenanceMessage(resolveStorageSettings({ maintenance: { enabled: true, message: '   ' } }))).toBe(DEFAULT_MAINTENANCE_MESSAGE);
+  });
+});
+
+describe('blocked file types', () => {
+  it('start empty, and bad values fall back to nothing blocked', () => {
+    expect(DEFAULT_STORAGE_SETTINGS.blockedMimeTypes).toEqual([]);
+    expect(resolveStorageSettings({}).blockedMimeTypes).toEqual([]);
+    expect(resolveStorageSettings({ blockedMimeTypes: 'application/zip' }).blockedMimeTypes).toEqual([]);
+  });
+  it('keep valid MIME types only, lowercased, unique and sorted', () => {
+    const s = resolveStorageSettings({ blockedMimeTypes: ['Image/PNG', 'application/zip', 'application/zip', '*/*', 5, 'x', "a'/b"] });
+    expect(s.blockedMimeTypes).toEqual(['application/zip', 'image/png']);
+  });
+  it('are taken out of the allowed list sent to the storage service', () => {
+    const all = allowedMimeTypes(['archives', 'images']);
+    expect(all).toContain('application/zip');
+    const trimmed = allowedMimeTypes(['archives', 'images'], ['application/zip']);
+    expect(trimmed).not.toContain('application/zip');
+    expect(trimmed).toContain('application/gzip');
+    expect(trimmed).toContain('image/png');
+    expect(allowedMimeTypes(['archives'], ['application/zip', 'application/x-7z-compressed', 'application/vnd.rar', 'application/gzip'])).toEqual([]);
+  });
+  it('know every type the platform can store, once each', () => {
+    const known = knownMimeTypes();
+    const names = known.map(k => k.mimeType);
+    expect(new Set(names).size).toBe(names.length);
+    expect(names).toContain('application/zip');
+    expect(known.find(k => k.mimeType === 'application/zip')?.groupLabel).toBe('Archives');
   });
 });

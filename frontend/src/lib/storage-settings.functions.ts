@@ -13,7 +13,7 @@ import { requireAdmin } from "./admin.functions";
 import { callGateway, loadEffectiveSettings } from "./storage-settings.server";
 import { resolveStorageSettings, type EffectiveStorageSettings, type StorageSettingsOverrides } from "./storage-settings";
 
-const SETTING_KEYS = ["globalMaxUploadBytes", "extraStoragePriceNgn", "allowedFileGroups", "planQuotas", "maintenance"] as const;
+const SETTING_KEYS = ["globalMaxUploadBytes", "extraStoragePriceNgn", "allowedFileGroups", "blockedMimeTypes", "planQuotas", "maintenance"] as const;
 
 export const getEffectiveStorageSettings = createServerFn({ method: "GET" }).handler(
   async (): Promise<EffectiveStorageSettings> => loadEffectiveSettings(),

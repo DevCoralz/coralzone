@@ -40,6 +40,7 @@ import adminCloudBuckets from "./_lib/handlers/admin-cloud-buckets.js";
 import adminCloudUsers from "./_lib/handlers/admin-cloud-users.js";
 import cloudApiKeys from "./_lib/handlers/cloud-api-keys.js";
 import adminCloudApiKeys from "./_lib/handlers/admin-cloud-api-keys.js";
+import adminCloudFiles from "./_lib/handlers/admin-cloud-files.js";
 import v1Usage from "./_lib/handlers/v1-usage.js";
 import v1Files from "./_lib/handlers/v1-files.js";
 
@@ -79,6 +80,8 @@ const routes = {
   "DELETE /cloud/api-keys": cloudApiKeys,
   "GET /admin/cloud-api-keys": adminCloudApiKeys,
   "PUT /admin/cloud-api-keys": adminCloudApiKeys,
+  "GET /admin/cloud-files": adminCloudFiles,
+  "PUT /admin/cloud-files": adminCloudFiles,
   // The public API, called with an X-API-Key header instead of a session.
   "GET /v1/usage": v1Usage,
   "GET /v1/files": v1Files,

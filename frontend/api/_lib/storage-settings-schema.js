@@ -18,6 +18,7 @@ export const LIMITS = {
   planBytesQuota: { min: 1 * GB, max: 100 * 1024 * GB },
   planMaxUploadBytes: { min: 1 * MB, max: 4 * GB },
   maintenanceMessageMax: 200,
+  blockedMimeTypesMax: 64,
 };
 
 // API (camelCase) key -> storage_settings.setting_key (snake_case).
@@ -25,11 +26,17 @@ export const KEY_TO_DB = {
   globalMaxUploadBytes: "global_max_upload_bytes",
   extraStoragePriceNgn: "extra_storage_price_ngn",
   allowedFileGroups: "allowed_file_groups",
+  blockedMimeTypes: "blocked_mime_types",
   planQuotas: "plan_quotas",
   maintenance: "maintenance",
 };
 export const DB_TO_KEY = Object.fromEntries(Object.entries(KEY_TO_DB).map(([k, v]) => [v, k]));
 export const SETTING_KEYS = Object.keys(KEY_TO_DB);
+
+// A MIME type like image/png or application/vnd.rar: lowercase letters, numbers
+// and . + - on each side of one slash. Anything else is refused, so a blocked
+// entry can never be a pattern or carry odd characters into a request.
+export const MIME_TYPE_RE = /^[a-z0-9][a-z0-9.+-]{0,60}\/[a-z0-9][a-z0-9.+-]{0,60}$/;
 
 const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
 const isPlainObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
@@ -67,6 +74,18 @@ export function validateSettingValue(key, value) {
       }
       // De-duplicate, keep canonical order.
       return { ok: true, value: FILE_GROUP_IDS.filter((id) => value.includes(id)) };
+    }
+
+    case "blockedMimeTypes": {
+      // Individual types an admin has switched off, on top of the file groups.
+      // An empty list is fine: it means nothing is blocked.
+      if (!Array.isArray(value) || value.length > LIMITS.blockedMimeTypesMax) {
+        return { ok: false, error: `Block at most ${LIMITS.blockedMimeTypesMax} file types.` };
+      }
+      if (!value.every((item) => typeof item === "string" && MIME_TYPE_RE.test(item.toLowerCase()))) {
+        return { ok: false, error: "Each blocked type must be a MIME type such as application/zip." };
+      }
+      return { ok: true, value: [...new Set(value.map((item) => item.toLowerCase()))].sort() };
     }
 
     case "planQuotas": {

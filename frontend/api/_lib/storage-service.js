@@ -25,3 +25,33 @@ export async function storageGet(path) {
     return null;
   }
 }
+
+// Calls that change things, for the admin file actions. Same promise as
+// storageGet: it never throws, and a failure is null. Unlike storageGet it
+// returns the status and body too, because an admin action needs to tell
+// "not found" apart from "storage is down". Callers must not pass the
+// service's own error text on to a browser.
+export async function storageCall(method, path, { json } = {}) {
+  const base = (process.env.STORAGE_SERVICE_URL ?? "").trim().replace(/\/+$/, "");
+  if (!base) return null;
+  const key = (process.env.STORAGE_SERVICE_KEY ?? "").trim();
+  const headers = key ? { "X-Service-Key": key } : {};
+  if (json !== undefined) headers["Content-Type"] = "application/json";
+  try {
+    const response = await fetch(`${base}${path}`, {
+      method,
+      headers,
+      body: json === undefined ? undefined : JSON.stringify(json),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    let data = null;
+    try {
+      data = await response.json();
+    } catch {
+      data = null;
+    }
+    return { ok: response.ok, status: response.status, data };
+  } catch {
+    return null;
+  }
+}
